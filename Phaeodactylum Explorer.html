@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phaeodactylum Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root{
+  /* Same printed technical plate as the leaf, engine and synapse explorers: part index | 3D plate | card, controls under the plate. One light theme. */
+  --paper:#e7eae6;
+  --panel:#fcfcfb;
+  --ink:#1b2320;
+  --muted:#5a6560;
+  --line:#d3d9d4;
+  --accent:#d95b17;
+  --accent-soft:#fbe8dc;
+  --display:"Barlow Condensed","Arial Narrow","Helvetica Neue",sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--body);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{height:100%;display:grid;grid-template-columns:256px minmax(0,1fr) 364px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"index view card" "index tools card"}
+
+#index{grid-area:index;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;z-index:5}
+.index-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 12px 6px 16px}
+.index-head h2{margin:0;font:600 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#partList{overflow:auto;padding:0 6px 18px;min-height:0;flex:1}
+.grp{display:flex;flex-direction:column;gap:1px;margin-top:8px}
+.grp h3{margin:0;padding:8px 10px 3px;font:600 12px/1.2 var(--display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:7px}
+.sw{width:9px;height:9px;border-radius:2px;flex:none;background:var(--c)}
+.row{display:flex;align-items:center;border-radius:4px}
+.row:hover{background:#eef2ef}
+.row.sel{background:var(--accent-soft)}
+.row .name{flex:1;text-align:left;background:none;border:0;padding:5px 6px 5px 10px;cursor:pointer;font-size:14.5px;line-height:1.25}
+.row.off .name{color:#97a19c;text-decoration:line-through}
+.row.feat .name{font-style:italic}
+.eye{background:none;border:0;padding:5px 8px;cursor:pointer;color:var(--muted);display:grid;place-items:center;border-radius:4px}
+.eye:hover{color:var(--ink)}
+.eye svg{width:18px;height:18px}
+.eye-spacer{width:34px;flex:none}
+.index-foot{padding:8px 16px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line)}
+
+#view{grid-area:view;position:relative;overflow:hidden;min-height:0;background:radial-gradient(120% 95% at 35% 35%,#fbfcfb 0%,#eef1ee 55%,#dde3df 100%);transition:background .4s}
+body.dark #view{background:radial-gradient(120% 95% at 35% 35%,#e3e6e4 0%,#cfd5d1 55%,#b9c1bc 100%)}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#scene:active{cursor:grabbing}
+.plate-title{position:absolute;left:18px;top:14px;pointer-events:none;max-width:calc(100% - 36px)}
+.plate-title h1{margin:0;font:700 30px/1 var(--display);letter-spacing:.01em;text-wrap:balance}
+.plate-title h1 i{font-style:italic;font-weight:600}
+.plate-title p{margin:5px 0 0;font:500 14px/1.3 var(--display);color:var(--muted);letter-spacing:.02em}
+.plate-title p span+span::before{content:"|";margin:0 .45em;color:#aab4ae}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:0;font-size:14px}
+.facts dt{font:600 12px/1.6 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:0;font-variant-numeric:tabular-nums}
+#labels,#leaders{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#labels[hidden],#leaders[hidden]{display:none}
+#leaders{width:100%;height:100%}
+#leaders .ln{fill:none;stroke:rgba(27,35,32,.62);stroke-width:1;stroke-dasharray:2 2}
+#leaders .dt{fill:var(--ink)}
+#leaders .sl{fill:none;stroke:var(--accent);stroke-width:1.5}
+#leaders .sd{fill:var(--accent)}
+.lbl{position:absolute;left:0;top:0;pointer-events:auto;white-space:nowrap;font:600 13px/1.15 var(--display);letter-spacing:.015em;background:rgba(252,252,251,.92);border:1px solid var(--line);border-radius:3px;padding:2px 6px;cursor:pointer;will-change:transform;display:none}
+.lbl:hover{border-color:var(--ink)}
+.lbl.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+.lbl.feat{font-style:italic;font-weight:500}
+#scaleLbl{position:absolute;left:0;top:0;pointer-events:none;font:600 12.5px/1 var(--display);letter-spacing:.04em;color:var(--ink);will-change:transform;white-space:nowrap}
+#scaleLbl[hidden]{display:none}
+#legend{position:absolute;left:16px;bottom:14px;display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.3;pointer-events:none;max-width:min(360px,calc(100% - 32px))}
+#legend .lg{background:rgba(252,252,251,.92);border:1px solid var(--line);border-radius:4px;padding:6px 9px;display:flex;flex-wrap:wrap;gap:3px 12px}
+#legend .lg b{width:100%;font:600 11.5px/1.3 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#legend .it{display:flex;align-items:center;gap:5px}
+#legend .dot{width:9px;height:9px;border-radius:50%;background:var(--c)}
+#legend .sq{width:10px;height:10px;border-radius:2px;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+#legend .cap{color:var(--muted);width:100%}
+#legend .ctr{width:100%;font-variant-numeric:tabular-nums}
+#legend .ctr b{display:inline;width:auto;font:600 13px/1.3 var(--body);letter-spacing:0;text-transform:none;color:var(--ink)}
+#hint{position:absolute;right:14px;top:14px;font-size:12px;color:var(--muted);pointer-events:none;text-align:right}
+#tip{position:absolute;left:0;top:0;pointer-events:none;background:var(--ink);color:#fff;font:600 13px/1.2 var(--display);letter-spacing:.02em;padding:4px 7px;border-radius:3px;white-space:nowrap}
+#tip[hidden]{display:none}
+#toast{position:absolute;left:50%;top:76px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:4px;font-size:13.5px;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
+#toast.on{opacity:1}
+#status{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:15px;pointer-events:none;padding:24px;text-align:center}
+
+#tools{grid-area:tools;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:9px 14px}
+.tg{display:flex;align-items:center;gap:6px;flex:none}
+.tg[hidden],.tb[hidden]{display:none}
+.tl{font:600 12px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tb{border:1px solid var(--line);background:#fff;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:14px;line-height:1.2;white-space:nowrap}
+.tb:hover{border-color:#9aa49f}
+.tb[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.tb:disabled{opacity:.45;cursor:default}
+select.tb{padding:5px 6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:5px 10px;cursor:pointer;font-size:14px;line-height:1.2;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{background:#eef2ef}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+input[type=range]{width:110px;accent-color:var(--accent)}
+.count{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);min-width:3.2em}
+.mobile-only{display:none}
+
+#card{grid-area:card;background:var(--panel);border-left:1px solid var(--line);overflow:auto;min-height:0}
+.card-in{padding:18px 20px 22px;display:flex;flex-direction:column;gap:12px}
+.eyebrow{margin:0;font:600 12px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.card-in h2{margin:0;font:700 28px/1.05 var(--display);text-wrap:balance}
+.card-in p{margin:0;max-width:62ch}
+.card-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12.5px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--line);border-radius:99px;padding:4px 9px 4px 8px;background:#fff}
+.x{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px;border-radius:4px}
+.x:hover{color:var(--ink)}
+.card-in h3{margin:0 0 3px;font:600 13px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.key{border-left:3px solid var(--accent);padding:2px 0 2px 12px}
+.note{background:#f0f3f1;border-radius:4px;padding:9px 12px;font-size:14px}
+.ctx{font-size:13.5px;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
+.tour{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.tour span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+.primary{border:0;background:var(--accent);color:#fff;border-radius:4px;padding:9px 14px;font-weight:600;cursor:pointer;align-self:flex-start}
+.primary:hover{filter:brightness(1.07)}
+.golink{border:1px solid var(--accent);background:#fff;color:var(--accent);border-radius:4px;padding:7px 12px;font-weight:600;cursor:pointer;align-self:flex-start}
+.golink:hover{background:var(--accent-soft)}
+.stages{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.stages li{display:grid;grid-template-columns:12px 1fr;gap:2px 10px;font-size:14px;line-height:1.35}
+.stages li::before{content:"";grid-row:span 2;width:12px;height:100%;min-height:34px;border-radius:2px;background:var(--c)}
+.stages li.cur b::after{content:" · you are here";font:500 13px/1 var(--body);color:var(--muted)}
+.stages button{all:unset;cursor:pointer}
+.stages button:hover b{text-decoration:underline}
+.stages b{font:600 16px/1.2 var(--display)}
+.hint{font-size:13.5px;color:var(--muted)}
+.refs{font-size:12.5px;color:var(--muted);line-height:1.45}
+.refs summary{cursor:pointer;font:600 12px/1.6 var(--display);letter-spacing:.1em;text-transform:uppercase}
+.refs ul{margin:6px 0 0;padding-left:16px}
+
+@media (max-width:899px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"view" "tools" "card"}
+  #card{border-left:0;border-top:1px solid var(--line);max-height:38vh}
+  #index{position:fixed;left:0;top:0;bottom:0;width:min(320px,86vw);transform:translateX(-102%);transition:transform .25s ease;box-shadow:0 0 30px rgba(0,0,0,.18);z-index:30}
+  body.parts-open #index{transform:none}
+  #tools{flex-wrap:nowrap;overflow-x:auto;gap:14px;padding:8px 12px;scrollbar-width:thin}
+  .mobile-only{display:inline-block}
+  .plate-title{left:14px;top:10px}
+  .plate-title h1{font-size:23px}
+  .plate-title p{font-size:12.5px}
+  #hint{display:none}
+  .card-in{padding:14px 16px 18px;gap:10px}
+  .card-in h2{font-size:24px}
+  #legend{left:10px;bottom:10px;font-size:12px}
+  #legend .cap{display:none}
+  #legend .lg{padding:4px 7px}
+  #toast{top:64px}
+}
+@media (max-width:1350px){#hint{display:none}}
+@media (prefers-reduced-motion:reduce){
+  #index,#toast,#view{transition:none}
+}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="app">
+  <aside id="index" aria-label="Parts">
+    <div class="index-head"><h2 id="indexTitle">Parts</h2><button class="tb" id="bShowAll">Show all</button></div>
+    <div id="partList"></div>
+    <div class="index-foot" id="indexFoot"></div>
+  </aside>
+
+  <main id="view">
+    <canvas id="scene" aria-label="Interactive 3D model of the diatom Phaeodactylum tricornutum. Drag to rotate, scroll or pinch to zoom."></canvas>
+    <svg id="leaders" aria-hidden="true"><path class="ln" id="lnPath"/><path class="dt" id="dtPath"/><path class="sl" id="slPath"/><path class="sd" id="sdPath"/></svg>
+    <div id="labels"></div>
+    <div id="scaleLbl">5 µm</div>
+    <header class="plate-title">
+      <h1 id="plateH1"><i>Phaeodactylum tricornutum</i></h1>
+      <p id="plateSub"></p>
+    </header>
+    <div id="legend"></div>
+    <div id="hint">Drag to rotate · scroll to zoom · right-drag to pan</div>
+    <div id="tip" hidden></div>
+    <div id="toast" role="status"></div>
+    <div id="status">Loading the 3D model…</div>
+  </main>
+
+  <div id="tools" aria-label="Controls">
+    <button class="tb mobile-only" id="bParts">Parts</button>
+    <div class="tg">
+      <span class="tl">Scale</span>
+      <div class="seg" role="group" aria-label="Scale" id="viewSeg"><button type="button" data-v="cell">Cell</button><button type="button" data-v="plastid">Chloroplast</button><button type="button" data-v="pyr">Pyrenoid</button></div>
+    </div>
+    <div class="tg">
+      <button class="tb" id="tFlux">Carbon route</button>
+      <button class="tb" id="tLight" data-views="plastid pyr">Light</button>
+      <button class="tb" id="tPS" data-views="plastid">Photosystems</button>
+      <button class="tb" id="tCut" data-views="cell">Cutaway</button>
+      <button class="tb" id="tLbl">Labels</button>
+    </div>
+    <div class="tg">
+      <label class="tl" for="explode">Explode</label>
+      <input id="explode" type="range" min="0" max="100" value="0">
+      <button class="tb" id="bExplode">Explode</button>
+    </div>
+    <div class="tg">
+      <button class="tb" id="bBack">◂ Put back</button>
+      <button class="tb" id="bNext">Take apart ▸</button>
+      <span class="count" id="tdCount">0/0</span>
+    </div>
+    <div class="tg">
+      <label class="tl" for="colorMode">Colour</label>
+      <select class="tb" id="colorMode">
+        <option value="illus">Illustrative</option>
+        <option value="origin">Origin and encoding</option>
+        <option value="tem">Electron density</option>
+      </select>
+      <button class="tb" id="bFit">Fit view</button>
+    </div>
+  </div>
+
+  <section id="card" aria-live="polite"></section>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+
+const TAU = Math.PI * 2;
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = t => t * t * (3 - 2 * t);
+const sgnpow = (v, p) => Math.sign(v) * Math.abs(v) ** p;
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Seeded random numbers, so every visitor sees the same cell. */
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let rnd = mulberry32(1055);
+const rr = (a, b) => a + (b - a) * rnd();
+
+/* ------------------------------------------------------------------ */
+/* Renderer, scene, camera                                             */
+/* ------------------------------------------------------------------ */
+const viewEl = $('view'), canvas = $('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.7;
+const hemi = new THREE.HemisphereLight(0xffffff, 0x9aa7a0, 0.95); scene.add(hemi);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0); keyLight.position.set(-4, 10, 8); scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xe2ecff, 0.75); fillLight.position.set(7, -4, -6); scene.add(fillLight);
+
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 500);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.09;
+
+/* ------------------------------------------------------------------ */
+/* Geometry helpers                                                    */
+/* ------------------------------------------------------------------ */
+const UP = new THREE.Vector3(0, 1, 0);
+function bare(g) {
+  for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
+  if (!g.attributes.normal) g.computeVertexNormals();
+  return g;
+}
+function smoothify(g) {
+  for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k);
+  const m = mergeVertices(g, 1e-4); m.computeVertexNormals(); return m;
+}
+function merge(list) {
+  let nv = 0, ni = 0;
+  for (const g of list) { nv += g.attributes.position.count; ni += g.index ? g.index.count : g.attributes.position.count; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), idx = new Uint32Array(ni);
+  let vo = 0, io = 0;
+  for (const g of list) {
+    if (!g.attributes.normal) g.computeVertexNormals();
+    const c = g.attributes.position.count;
+    pos.set(g.attributes.position.array, vo * 3); nor.set(g.attributes.normal.array, vo * 3);
+    if (g.index) { const a = g.index.array; for (let k = 0; k < a.length; k++) idx[io + k] = a[k] + vo; io += a.length; }
+    else { for (let k = 0; k < c; k++) idx[io + k] = vo + k; io += c; }
+    vo += c;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  g.computeBoundingSphere(); g.computeBoundingBox();
+  return g;
+}
+/* A grid surface: fn(u, v) -> [x, y, z]; v wraps round when closeV. */
+function gridGeo(nu, nv, fn, closeV = true, skip = null) {
+  const cols = closeV ? nv : nv + 1, pos = [], idx = [];
+  for (let i = 0; i <= nu; i++) for (let j = 0; j < cols; j++) { const p = fn(i / nu, j / nv); pos.push(p[0], p[1], p[2]); }
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+    if (skip && skip((i + 0.5) / nu, (j + 0.5) / nv)) continue;
+    const j1 = closeV ? (j + 1) % nv : j + 1;
+    const a = i * cols + j, b = (i + 1) * cols + j, c = (i + 1) * cols + j1, d = i * cols + j1;
+    idx.push(a, b, d, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return orientOut(g);
+}
+/* Make front faces point outwards (needed for the lumen tint on back faces). */
+function orientOut(g) {
+  g.computeBoundingBox(); if (!g.attributes.normal) g.computeVertexNormals();
+  const c = g.boundingBox.getCenter(new THREE.Vector3()), p = g.attributes.position, n = g.attributes.normal;
+  let s = 0;
+  for (let i = 0; i < p.count; i++) s += (p.getX(i) - c.x) * n.getX(i) + (p.getY(i) - c.y) * n.getY(i) + (p.getZ(i) - c.z) * n.getZ(i);
+  if (s < 0) {
+    const ix = g.index.array;
+    for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; }
+    g.index.needsUpdate = true; g.computeVertexNormals();
+  }
+  return g;
+}
+/* Loft a closed polygon of [z, y] points along x. Sections share point counts. Outward normals, creased. */
+function loft(sections, { capStart = false, capEnd = false, crease = 0.75 } = {}) {
+  const p0 = sections[0].pts, n = p0.length;
+  let area = 0; for (let j = 0; j < n; j++) { const [a1, b1] = p0[j], [a2, b2] = p0[(j + 1) % n]; area += a1 * b2 - a2 * b1; }
+  const rev = area < 0, pos = [], idx = [];
+  const ordered = s => rev ? s.pts.slice().reverse() : s.pts;
+  for (const s of sections) for (const [z, y] of ordered(s)) pos.push(s.x, y, z);
+  for (let i = 0; i < sections.length - 1; i++) for (let j = 0; j < n; j++) {
+    const j1 = (j + 1) % n, a = i * n + j, b = (i + 1) * n + j, c = (i + 1) * n + j1, d = i * n + j1;
+    idx.push(a, b, d, b, c, d);
+  }
+  const cap = (si, dir) => {
+    const s = sections[si], pts = ordered(s), base = pos.length / 3;
+    const tri = THREE.ShapeUtils.triangulateShape(pts.map(([z, y]) => new THREE.Vector2(z, y)), []);
+    for (const [z, y] of pts) pos.push(s.x, y, z);
+    for (const [a, b, c] of tri) {
+      const A = pts[a], B = pts[b], C = pts[c];
+      const nx = (B[1] - A[1]) * (C[0] - A[0]) - (B[0] - A[0]) * (C[1] - A[1]);
+      if (nx * dir > 0) idx.push(base + a, base + b, base + c); else idx.push(base + a, base + c, base + b);
+    }
+  };
+  if (capStart) cap(0, -1);
+  if (capEnd) cap(sections.length - 1, 1);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  const out = toCreasedNormals(g, crease);
+  out.computeBoundingBox(); out.computeBoundingSphere();
+  return out;
+}
+/* A flat sac or slab: footprint polygon in [x, z], extruded between y0 and y1 with rounded edges. */
+const toShapePts = p => p.map(([x, z]) => new THREE.Vector2(x, -z));
+function footprintSlab(poly, y0, y1, bevel = 0.055) {
+  const sh = new THREE.Shape(toShapePts(poly));
+  const h = y1 - y0, bt = Math.min(bevel, h * 0.35), bs = bevel;
+  const g = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.001, h - 2 * bt), bevelEnabled: true, bevelThickness: bt, bevelSize: bs, bevelOffset: -bs, bevelSegments: 3, curveSegments: 1 });
+  g.rotateX(-Math.PI / 2); g.translate(0, y0 + bt, 0);
+  return bare(g);
+}
+function tubeAlong(points, r, seg = 64, rad = 12, caps = true) {
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+  const list = [bare(new THREE.TubeGeometry(curve, seg, r, rad, false))];
+  if (caps) for (const t of [0, 1]) { const s = new THREE.SphereGeometry(r, rad, Math.max(6, rad / 2)); const q = curve.getPoint(t); s.translate(q.x, q.y, q.z); list.push(bare(s)); }
+  return merge(list);
+}
+function canvasTex(w, h, draw, wrap = false) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  if (wrap) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  return t;
+}
+const DOT_TEX = canvasTex(64, 64, g => { g.fillStyle = '#fff'; g.beginPath(); g.arc(32, 32, 28, 0, TAU); g.fill(); });
+DOT_TEX.colorSpace = THREE.NoColorSpace;
+/* Side view of a lipid bilayer: one tile is ~4 nm wide and spans the bilayer. */
+const BILAYER_TEX = canvasTex(64, 64, g => {
+  g.fillStyle = '#efe9e4'; g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = '#c9bfb8'; g.lineWidth = 2;
+  for (let k = 0; k < 5; k++) { const x = 6.4 + k * 12.8; g.beginPath(); g.moveTo(x - 2, 12); g.lineTo(x - 2, 30); g.moveTo(x + 2, 12); g.lineTo(x + 2, 30); g.moveTo(x - 2, 34); g.lineTo(x - 2, 52); g.moveTo(x + 2, 34); g.lineTo(x + 2, 52); g.stroke(); }
+  g.fillStyle = '#9c918a';
+  for (let k = 0; k < 5; k++) { const x = 6.4 + k * 12.8; for (const y of [7, 57]) { g.beginPath(); g.arc(x, y, 5.6, 0, TAU); g.fill(); } }
+}, true);
+
+/* ------------------------------------------------------------------ */
+/* Colours                                                             */
+/* ------------------------------------------------------------------ */
+const PAL = {
+  illus: {
+    wall: '#e4ddc6', pm: '#c4a68c', slc4: '#2f6fd6', nuc: '#9ea8cb', nucIn: '#d3d8ec', nucleolus: '#69769f', cer: '#d2a679', plastid: '#b9892a', plIn: '#ecd798', lam: '#8a6a1c', pyr: '#5f82b4', pyrIn: '#9db3d6', mito: '#d9805f', vac: '#c9e1ea', golgi: '#e0b24f', lipid: '#f2dc8c',
+    cerm: '#c48f5c', cerIn: '#efd8bd', ribo: '#5e4232', ppm: '#9a7cc4', ppmIn: '#e2d6f2', ppcv: '#c8b4e4', oem: '#5f9e64', iem: '#3f7f47', envIn: '#d4e8cf', gl: '#9c7b25', thy: '#b08a2c', lumen: '#f3e3b4', matrix: '#6585b3', rub: '#4c6b99', shell: '#2a9d8f', ppt: '#c4507f', pptLumen: '#f5cddd', tca: '#f1c232', psi: '#2e7d4f', psii: '#ee8f22', bst: '#2563c9',
+    rbcL: '#5f86bd', rbcS: '#b3cbe9', pyco: '#8e5bb5', sticker: '#55307a', shellP: '#2a9d8f', pptMem: '#d886a8', tcaP: '#f1c232', bst3: '#2563c9',
+  },
+  tem: {
+    wall: '#8f8f8f', pm: '#3d3d3d', slc4: '#3d3d3d', nuc: '#7a7a7a', nucIn: '#a9a9a9', nucleolus: '#2b2b2b', cer: '#555555', plastid: '#575757', plIn: '#9b9b9b', lam: '#2c2c2c', pyr: '#363636', pyrIn: '#4a4a4a', mito: '#4d4d4d', vac: '#dcdcdc', golgi: '#454545', lipid: '#232323',
+    cerm: '#2e2e2e', cerIn: '#b6b6b6', ribo: '#1c1c1c', ppm: '#2e2e2e', ppmIn: '#b6b6b6', ppcv: '#5d5d5d', oem: '#2e2e2e', iem: '#2e2e2e', envIn: '#b6b6b6', gl: '#2a2a2a', thy: '#2a2a2a', lumen: '#c4c4c4', matrix: '#414141', rub: '#343434', shell: '#1d1d1d', ppt: '#262626', pptLumen: '#cdcdcd', tca: '#565656', psi: '#2a2a2a', psii: '#2a2a2a', bst: '#2a2a2a',
+    rbcL: '#474747', rbcS: '#6a6a6a', pyco: '#2f2f2f', sticker: '#1e1e1e', shellP: '#2a2a2a', pptMem: '#4a4a4a', tcaP: '#585858', bst3: '#3d3d3d',
+  },
+  origin: {
+    wall: '#b4bee0', pm: '#7f92cf', slc4: '#334b9e', nuc: '#7f92cf', nucIn: '#c3cbea', nucleolus: '#45599e', cer: '#7f92cf', plastid: '#5aa05a', plIn: '#c4e0bf', lam: '#3f7f3f', pyr: '#4f9a5a', pyrIn: '#9ccaa3', mito: '#e08a3c', vac: '#cfd7f0', golgi: '#7f92cf', lipid: '#c7cfed',
+    cerm: '#7f92cf', cerIn: '#ccd4f0', ribo: '#334b9e', ppm: '#c0528a', ppmIn: '#f0cfe0', ppcv: '#e2a6c4', oem: '#5aa05a', iem: '#5aa05a', envIn: '#cfe7ca', gl: '#4f9a4f', thy: '#5aa05a', lumen: '#d7edd3', matrix: '#4f9a5a', rub: '#3b8546', shell: '#7f92cf', ppt: '#5aa05a', pptLumen: '#d7edd3', tca: '#334b9e', psi: '#2e7d4f', psii: '#ee8f22', bst: '#334b9e',
+    rbcL: '#5aa05a', rbcS: '#8fc68f', pyco: '#334b9e', sticker: '#1f2f6b', shellP: '#7f92cf', pptMem: '#7cb87c', tcaP: '#334b9e', bst3: '#334b9e',
+  },
+};
+const ACCENT = new THREE.Color('#d95b17');
+const FLUX_COL = { hco3: '#1f6fe0', co2: '#22272b', h: '#e0433a', fix: '#1fa463' };
+const state = { view: null, sel: null, hover: null, isolate: false, labels: !matchMedia('(max-width: 899px)').matches, flux: false, ps: false, light: true, cut: true, color: 'illus' };
+const col = key => PAL[state.color][key] || PAL.illus[key] || '#999999';
+
+function tintInner(m, innerKey) {
+  m.userData.innerKey = innerKey;
+  m.userData.uInner = { value: new THREE.Color(col(innerKey)) };
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uInner = m.userData.uInner;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uInner;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\n  if (!gl_FrontFacing) diffuseColor.rgb = uInner;');
+  };
+  m.customProgramCacheKey = () => 'inner-tint';
+}
+
+/* ------------------------------------------------------------------ */
+/* Parts and views                                                     */
+/* ------------------------------------------------------------------ */
+class Part {
+  constructor(view, d) {
+    Object.assign(this, d); this.view = view;
+    this.vec = new THREE.Vector3(...(d.vec || [0, 0, 0]));
+    const f = new THREE.Vector3(...(d.fly || d.vec || [0, 1, 0]));
+    this.fly = f.lengthSq() > 1e-9 ? f.normalize() : new THREE.Vector3(0, 1, 0);
+    this.anchor = new THREE.Vector3(...(d.anchor || [0, 0, 0]));
+    this.group = new THREE.Group(); view.root.add(this.group);
+    this.mats = []; this.over = []; this.removed = false; this.out = 0;
+    this.planes = d.clip === false ? [] : (view.planeDefs || []).map(pd => ({ pd, pl: new THREE.Plane(new THREE.Vector3(...pd.n), pd.c) }));
+    this.clipArr = this.planes.map(o => o.pl);
+  }
+  mat(key, o = {}) {
+    const m = new THREE.MeshStandardMaterial({ color: col(key), roughness: o.rough ?? 0.6, metalness: 0, side: THREE.DoubleSide, clippingPlanes: o.noClip ? [] : this.clipArr, ...(o.extra || {}) });
+    m.userData.key = key; m.userData.base = o.opacity ?? 1;
+    if (m.userData.base < 1) { m.transparent = true; m.opacity = m.userData.base; m.depthWrite = false; }
+    if (o.inner) tintInner(m, o.inner);
+    this.mats.push(m); return m;
+  }
+  add(obj, parent = this.group) { obj.traverse(m => { if (m.isMesh) m.userData.part = this; }); parent.add(obj); return obj; }
+  mesh(geo, key, o = {}) { return this.add(new THREE.Mesh(geo, this.mat(key, o))); }
+  inst(geo, key, list, o = {}) {
+    const im = new THREE.InstancedMesh(geo, this.mat(key, o), list.length), M = new THREE.Matrix4(), one = new THREE.Vector3(1, 1, 1);
+    list.forEach((c, i) => { M.compose(c.p, c.q || new THREE.Quaternion(), c.s || one); im.setMatrixAt(i, M); });
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.computeBoundingBox();
+    if (o.noPick) im.raycast = () => {};
+    return this.add(im);
+  }
+  overlay(kind, obj) { obj.traverse(m => { if (m.isMesh) m.raycast = () => {}; }); this.group.add(obj); this.over.push({ kind, obj }); return obj; }
+}
+class View {
+  constructor(o) {
+    Object.assign(this, o);
+    this.root = new THREE.Group(); this.root.visible = false; scene.add(this.root);
+    this.parts = {}; this.order = []; this.built = false; this.E = 0;
+    this.homeDir = new THREE.Vector3(...o.home).normalize(); this.sideDir = new THREE.Vector3(...o.side).normalize();
+  }
+  build() {
+    if (this.built) return; this.built = true;
+    rnd = mulberry32(this.seed);
+    for (const d of this.defs) { const p = new Part(this, d); if (d.build) d.build(p); this.parts[p.id] = p; this.order.push(p); }
+    this.removable = this.order.filter(p => !p.feature);
+    if (this.extra) this.extra(this);
+    this.root.updateMatrixWorld(true);
+    for (const p of this.order) {
+      if (p.focusBox) p.fbox = new THREE.Box3(new THREE.Vector3(...p.focusBox[0]), new THREE.Vector3(...p.focusBox[1]));
+      p.box0 = p.feature ? p.fbox : this.clipBox(new THREE.Box3().setFromObject(p.group));
+      if (!p.fbox) p.fbox = p.box0;
+      if (p.focusDir) p.focusDir = new THREE.Vector3(...p.focusDir).normalize();
+    }
+  }
+  clipBox(b) { if (this.box) { b.min.max(new THREE.Vector3(...this.box[0])); b.max.min(new THREE.Vector3(...this.box[1])); } return b; }
+}
+
+/* ================================================================== */
+/* VIEW 1: the whole cell. 1 unit = 1 µm.                               */
+/* x runs along the cell, y is up (the chloroplast side), z across.     */
+/* The cutaway removes the front half (z > 0).                         */
+/* ================================================================== */
+const CELL = { rB: 2.1, rA: 0.42, sig: 4.6, ky: 0.9 };
+function rC(x) { const a = Math.abs(x); let r = CELL.rA + (CELL.rB - CELL.rA) * Math.exp(-((a / CELL.sig) ** 4)); if (a > 10.45) r *= Math.sqrt(Math.max(0, 1 - ((a - 10.45) / 0.55) ** 2)); return r; }
+const yC = x => 0.012 * Math.max(0, Math.abs(x) - 3) ** 2;
+function cellPt(x, th, d = 0) { const r = Math.max(0, rC(x) - d); return [x, yC(x) + CELL.ky * r * Math.cos(th), r * Math.sin(th)]; }
+const PLC = { L: 5.6, gap: 0.13 };
+const plTau = x => Math.sqrt(Math.max(0, 1 - (x / PLC.L) ** 2));
+const plTh = x => 0.8 * plTau(x) ** 0.6;
+const plT = x => 0.9 * plTau(x) ** 0.5;
+const plMid = x => PLC.gap + plT(x) / 2;
+const pyTau = x => Math.max(0, 1 - (x / 3) ** 2) ** 0.22;
+const rMid = x => rC(x) - plMid(x);
+/* A curved slab that follows the cell wall: angle half-width th(x) (+ offset dTh), depth dm(x) ± ht(x). */
+function curvedSlab({ x0, x1, th, dm, ht, dTh = () => 0, p = 0.4, nu = 110, nv = 44 }) {
+  return gridGeo(nu, nv, (u, v) => {
+    const x = lerp(x0, x1, u), s = v * TAU;
+    return cellPt(x, dTh(x) + th(x) * sgnpow(Math.cos(s), p), dm(x) - ht(x) * sgnpow(Math.sin(s), p));
+  }, true);
+}
+const MITO = [
+  { pts: [-4.7, -3.6, -2.3, -1.0, 0.4, 1.7, 3.0, 3.9].map((x, i) => cellPt(x, -0.99 + 0.05 * Math.sin(i * 1.7), 0.45 + 0.05 * Math.cos(i * 1.3))), r: 0.2 },
+  { pts: [-2.7, -1.5, -0.2, 1.1, 2.4, 3.6, 4.4].map((x, i) => cellPt(x, -2.35 + 0.12 * Math.sin(i * 1.1), 0.36 + 0.05 * Math.sin(i * 2.1))), r: 0.19 },
+  { pts: [-6.3, -5.5, -4.6, -3.7].map((x, i) => cellPt(x, -1.55 + 0.1 * Math.sin(i * 1.9), 0.2 + 0.02 * i)), r: 0.14 },
+];
+const GOLGI = [{ c: [-2.15, -0.72, -0.98], ry: 0.35, tilt: 0.4 }, { c: [2.45, -0.82, -0.88], ry: -0.3, tilt: -0.45 }];
+const LIPID = { c: [-3.0, -0.45, -0.95], r: 0.32 };
+const NUC = { c: [0.15, -0.28, 0], r: [1.65, 1.1, 1.25] };
+
+function buildWall(p) {
+  p.mesh(gridGeo(240, 52, (u, v) => cellPt(lerp(-11, 11, u), v * TAU, -0.07)), 'wall', { opacity: 0.22, rough: 0.35 });
+}
+function buildPM(p) {
+  p.mesh(gridGeo(240, 52, (u, v) => cellPt(lerp(-11, 11, u), v * TAU, 0)), 'pm', { opacity: 0.38, rough: 0.5 });
+  const list = [], g = new THREE.IcosahedronGeometry(0.058, 1);
+  for (let k = 0; k < 220; k++) { const x = rr(-9.8, 9.8), th = rnd() * TAU; list.push({ p: new THREE.Vector3(...cellPt(x, th, 0.005)) }); }
+  p.inst(g, 'slc4', list, { rough: 0.4 });
+}
+function buildNucleus(p) {
+  const g = new THREE.SphereGeometry(1, 56, 36), v = new THREE.Vector3(), pa = g.attributes.position;
+  for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const f = 1 + 0.025 * Math.sin(v.x * 5 + 1) * Math.cos(v.y * 4) + 0.02 * Math.sin(v.z * 6); v.multiplyScalar(f); pa.setXYZ(i, v.x, v.y, v.z); }
+  g.scale(...NUC.r); g.translate(...NUC.c); g.computeVertexNormals();
+  p.mesh(bare(g), 'nuc', { inner: 'nucIn', rough: 0.55 });
+  const n = new THREE.SphereGeometry(0.42, 28, 18); n.scale(1, 0.9, 1); n.translate(0.55, -0.32, -0.42);
+  p.mesh(bare(n), 'nucleolus', { rough: 0.6 });
+}
+function buildCER(p) {
+  p.mesh(curvedSlab({ x0: -5.68, x1: 5.68, th: x => plTh(x) + 0.05, dm: plMid, ht: x => plT(x) / 2 + 0.05 }), 'cer', { opacity: 0.32, rough: 0.4, inner: 'cer' });
+  const b = new THREE.SphereGeometry(1, 28, 16); b.scale(0.95, 0.11, 0.72); b.translate(0.15, 0.89, 0);
+  p.mesh(bare(b), 'cer', { opacity: 0.45, rough: 0.4 });
+}
+function buildPlastid(p) {
+  p.mesh(curvedSlab({ x0: -PLC.L, x1: PLC.L, th: plTh, dm: plMid, ht: x => plT(x) / 2, nu: 130, nv: 48 }), 'plastid', { inner: 'plIn', rough: 0.55 });
+  /* Thylakoid bands, seen at this scale as thin sheets. The middle one is the level of the PPT, split by the pyrenoid. */
+  const ht = x => 0.02 * plTau(x) ** 0.3;
+  for (const f of [-0.34, -0.17, 0.17, 0.34]) p.mesh(curvedSlab({ x0: -5.3, x1: 5.3, th: x => 0.9 * plTh(x), dm: x => plMid(x) + f * plT(x), ht, p: 0.3, nu: 100, nv: 24 }), 'lam', { rough: 0.6 });
+  for (const s of [1, -1]) {
+    const inner = x => 0.42 / rMid(x), outer = x => 0.9 * plTh(x);
+    p.mesh(curvedSlab({ x0: -5.2, x1: 5.2, th: x => Math.max(0.002, (outer(x) - inner(x)) / 2), dTh: x => s * (outer(x) + inner(x)) / 2, dm: plMid, ht, p: 0.3, nu: 100, nv: 24 }), 'lam', { rough: 0.6 });
+  }
+}
+function buildPyrCell(p) {
+  p.mesh(curvedSlab({ x0: -3, x1: 3, th: x => 0.35 * pyTau(x) / rMid(x), dm: plMid, ht: x => 0.13 * pyTau(x), p: 0.32, nu: 80, nv: 40 }), 'pyr', { rough: 0.45, inner: 'pyrIn' });
+}
+function buildMito(p) {
+  for (const m of MITO) p.mesh(tubeAlong(m.pts, m.r, 80, 14), 'mito', { rough: 0.5 });
+}
+function buildVac(p) {
+  for (const s of [1, -1]) {
+    const x0 = 5.0, x1 = 10.25, xc = (x0 + x1) / 2, hl = (x1 - x0) / 2;
+    p.mesh(gridGeo(80, 36, (u, v) => {
+      const x = s * lerp(x0, x1, u), t = Math.max(0, 1 - ((Math.abs(x) - xc) / hl) ** 2) ** 0.45, r = 0.74 * rC(x) * t, th = v * TAU;
+      return [x, yC(x) - 0.05 + CELL.ky * r * Math.cos(th), r * Math.sin(th)];
+    }), 'vac', { opacity: 0.6, rough: 0.25 });
+  }
+}
+function buildGolgi(p) {
+  for (const G of GOLGI) {
+    const list = [];
+    for (let k = 0; k < 4; k++) {
+      const R = 0.38 - k * 0.035, g = new THREE.CylinderGeometry(R, R, 0.045, 28, 1), pa = g.attributes.position;
+      for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = pa.getZ(i); pa.setY(i, pa.getY(i) + 0.9 * (x * x + z * z) * 0.6 + k * 0.085); }
+      list.push(bare(g));
+    }
+    for (let k = 0; k < 7; k++) { const a = rnd() * TAU, s = new THREE.SphereGeometry(0.045, 10, 8); s.translate(0.42 * Math.cos(a), rr(0.05, 0.3), 0.42 * Math.sin(a)); list.push(bare(s)); }
+    const g = merge(list); g.rotateX(0.2); g.rotateZ(G.tilt); g.rotateY(G.ry); g.translate(...G.c);
+    p.mesh(g, 'golgi', { rough: 0.5 });
+  }
+}
+function buildLipid(p) { const g = new THREE.SphereGeometry(LIPID.r, 28, 18); g.translate(...LIPID.c); p.mesh(bare(g), 'lipid', { rough: 0.2 }); }
+
+const CELL_DEFS = [
+  {
+    id: 'wall', title: 'Cell wall', sys: 'surface', vec: [0, 7, 0], anchor: cellPt(-8.2, -1.3, -0.07), build: buildWall,
+    facts: [['Material', 'mostly organic in fusiform cells'], ['Silica', 'little: up to 10 narrow bands in the girdle region (Borowitzka & Volcani 1978)'], ['Oval cells', 'one silicified valve, with a raphe']],
+    what: 'Most diatoms live in a two-part glass box, the frustule. Phaeodactylum is the exception. Its fusiform and triradiate cells are only weakly silicified and are enclosed mainly by an organic wall, so the cell can grow, and change shape, with little or no silicon.',
+    key: 'Phaeodactylum is pleiomorphic: one strain can grow as fusiform, triradiate or oval cells, and only the oval form builds an ordinary silica valve. Fusiform cells dominate most laboratory cultures (De Martino et al. 2007).',
+    note: ['Not to scale.', 'The wall is drawn thicker than it is, so that it shows.'],
+  },
+  {
+    id: 'pm', title: 'Plasma membrane', sys: 'surface', vec: [0, 5, 0], anchor: cellPt(-6.2, -2.0, 0), build: buildPM,
+    facts: [['Carries', 'SLC4 bicarbonate transporters (blue dots)'], ['Seawater', 'about 2 mM inorganic carbon, under 1% of it as CO₂']],
+    what: 'The membrane that encloses the cell, just inside the wall. Seawater holds plenty of inorganic carbon, but almost all of it is bicarbonate (HCO₃⁻). Free CO₂, the only form Rubisco can use, is scarce and diffuses slowly in water.',
+    key: 'Phaeodactylum takes up HCO₃⁻ directly. SLC4-family transporters in the plasma membrane carry it from seawater into the cytosol in a Na⁺-dependent way (Nakajima et al. 2013): the first step of the cell’s CO₂-concentrating mechanism (CCM).',
+    note: ['Try it.', 'Turn on Carbon route to follow HCO₃⁻ from the sea to the pyrenoid. Which transporters carry it across the four chloroplast membranes is still an open question.'],
+  },
+  {
+    id: 'cer', title: 'Chloroplast ER', sys: 'host', vec: [0, 3.5, 0], anchor: cellPt(-4.1, -0.3, 0.08), build: buildCER,
+    facts: [['Membrane', 'the cERM, outermost of the chloroplast’s four'], ['Continuous with', 'the outer nuclear membrane'], ['Surface', 'studded with ribosomes']],
+    what: 'The chloroplast sits inside a sac of endoplasmic reticulum. The outer membrane of this sac carries ribosomes and joins the outer membrane of the nuclear envelope, so the chloroplast is wired into the cell’s endomembrane system.',
+    key: 'The four membranes record a secondary endosymbiosis. A eukaryotic host engulfed a red alga and reduced it to little more than its chloroplast. From the outside in: the chloroplast ER membrane (host), the periplastid membrane (the red alga’s plasma membrane), and the two envelope membranes of the red alga’s own chloroplast.',
+    link: ['plastid', 'cerm', 'See the four membranes ▸'],
+  },
+  {
+    id: 'nucleus', title: 'Nucleus', sys: 'host', vec: [0, -2.6, 0], anchor: [NUC.c[0] - 1.0, NUC.c[1] - 0.75, 0], build: buildNucleus, focusDir: [0.15, 0.25, 1],
+    facts: [['Position', 'centre of the cell, pressed against the chloroplast'], ['Genome', 'about 27 Mb'], ['Outer membrane', 'continuous with the chloroplast ER']],
+    what: 'Holds the nuclear genome. Most chloroplast proteins, among them the Rubisco linker PYCO1, the PyShell proteins and the carbonic anhydrases of the CCM, are encoded here and have to be imported across all four chloroplast membranes.',
+    key: 'Import through four membranes needs a two-part address. A signal peptide takes the protein into the chloroplast ER as it is made. SELMA, machinery derived from the red alga’s ER-associated degradation system, moves it across the periplastid membrane, and TOC and TIC complexes take it through the two envelope membranes.',
+    note: ['Close contact.', 'Where the nucleus meets the chloroplast, Flori et al. (2016) saw direct contacts between the periplastid membrane and the inner nuclear membrane.'],
+  },
+  {
+    id: 'plastid', title: 'Chloroplast', sys: 'plastid', vec: [0, 3.0, 0], anchor: cellPt(-2.4, 0, plMid(-2.4) + plT(-2.4) * 0.28), build: buildPlastid,
+    facts: [['Number', 'one per cell'], ['Volume', 'about 10 µm³, a third of the cell in low light (Uwizeye et al. 2021)'], ['Pigments', 'chlorophylls a and c, fucoxanthin'], ['Own genome', 'about 130 protein genes, rbcL and rbcS among them']],
+    what: 'A single, elongated chloroplast lies along the wall in the middle of the cell. Fucoxanthin, the main carotenoid of its light-harvesting proteins, makes it golden-brown. Its thylakoids run lengthwise in loose bands, and the pyrenoid runs down its middle.',
+    key: 'Light remodels it. When cells are moved from low to high light, the chloroplast’s share of the cell falls from about 34% to 25%, while the pyrenoid grows from about 7% to 13% of the chloroplast and contacts with mitochondria increase (Uwizeye et al. 2021).',
+    note: ['Division.', 'The chloroplast divides before the cell does, and the pyrenoid is split in the same plane (Tanaka et al. 2015).'],
+    link: ['plastid', null, 'Open the chloroplast section ▸'],
+  },
+  {
+    id: 'pyr', title: 'Pyrenoid', sys: 'plastid', vec: [0, 4.6, 0], anchor: cellPt(1.4, 0, plMid(1.4) - 0.13), build: buildPyrCell, focusDir: [0.2, 0.55, 1],
+    facts: [['Shape', 'a rod about 6 µm long and under 1 µm wide (PYCO1-CFP; Oh et al. 2023)'], ['Volume', 'about 0.8 µm³, 7% of the chloroplast in low light'], ['Built from', 'Rubisco, the linker PYCO1, the PyShell and a pair of thylakoids']],
+    what: 'A rod of densely packed Rubisco along the centre of the chloroplast, where most of the cell’s CO₂ is fixed. Unlike the round pyrenoid of Chlamydomonas it has no starch sheath: diatoms store their carbohydrate, chrysolaminarin, in vacuoles.',
+    key: 'The pyrenoid is where the CCM pays off. HCO₃⁻ that the cell has accumulated is turned into CO₂ inside the thylakoids that run through the pyrenoid, right next to Rubisco, so Rubisco works at a high CO₂ concentration.',
+    link: ['plastid', 'matrix', 'Open the chloroplast section ▸'],
+  },
+  {
+    id: 'mito', title: 'Mitochondria', sys: 'host', vec: [0, -0.6, -3.4], clip: false, anchor: MITO[1].pts[4], build: buildMito,
+    facts: [['Shape', 'tubular, lying close to the chloroplast'], ['Volume', 'about 4% of the cell; nearly 7% after a shift to high light'], ['Contact', 'about 7% of the chloroplast surface lies within 30 nm of a mitochondrion']],
+    what: 'Respiration and ATP supply. In diatoms the mitochondria also take up surplus reducing power from the chloroplast.',
+    key: 'Energetic coupling. Bailleul et al. (2015) showed that Phaeodactylum reroutes reducing power from the chloroplast to the mitochondria and imports mitochondrial ATP into the chloroplast, which helps it fix CO₂ efficiently.',
+    note: ['Closer in high light.', 'Contacts between chloroplast and mitochondria increase when cells are moved to high light (Uwizeye et al. 2021).'],
+  },
+  {
+    id: 'golgi', title: 'Golgi apparatus', label: 'Golgi', sys: 'host', vec: [0, -3.6, -1.6], clip: false, anchor: [GOLGI[1].c[0], GOLGI[1].c[1] - 0.25, GOLGI[1].c[2]], build: buildGolgi,
+    facts: [['Number', 'one to four per cell (Ovide et al. 2018)'], ['Position', 'beside the nucleus']],
+    what: 'Stacks of flattened cisternae that modify and sort proteins and polysaccharides arriving from the ER, including material for the organic cell wall and for secretion.',
+    key: 'Before the cell divides, the Golgi duplicates, and the vesicle marker Sec4 moves from the Golgi to the future division plane while cleavage furrows grow in from both tips of the cell (Tanaka et al. 2015).',
+  },
+  {
+    id: 'vac', title: 'Vacuoles', sys: 'host', vec: [0, -2.2, -2.2], anchor: [7.6, yC(7.6) - 0.05, 0], build: buildVac,
+    facts: [['Where', 'mainly in the arms of the cell'], ['Store', 'chrysolaminarin, a β-1,3-glucan']],
+    what: 'Large vacuoles fill most of the arms, while the other organelles crowd into the central body (Borowitzka & Volcani 1978).',
+    key: 'Diatoms keep their storage carbohydrate here, not in the chloroplast (Huang et al. 2018). So the diatom pyrenoid has no starch sheath around it, unlike a green-algal pyrenoid.',
+  },
+  {
+    id: 'lipid', title: 'Lipid droplet', sys: 'host', vec: [0, -3.2, -2.4], clip: false, anchor: [LIPID.c[0], LIPID.c[1] + LIPID.r, LIPID.c[2]], build: buildLipid,
+    facts: [['Contents', 'mainly triacylglycerol'], ['Grows', 'when nitrogen runs short']],
+    what: 'A store of neutral lipid with a protein coat. Under nutrient limitation, especially nitrogen starvation, Phaeodactylum diverts carbon into triacylglycerol and its lipid droplets swell.',
+    key: 'This is why Phaeodactylum is a model for algal oil production. It is also grown commercially for fucoxanthin and for the omega-3 fatty acid EPA.',
+  },
+];
+
+/* ================================================================== */
+/* VIEW 2: a block through the middle of the chloroplast.               */
+/* 1 unit = 0.1 µm. x runs along the chloroplast and the pyrenoid,      */
+/* y across its thickness, z across its width. The front face (z = 0)   */
+/* cuts lengthwise through the middle of the pyrenoid; the right face   */
+/* (x = 18) cuts across it. Only one half of the width is shown.        */
+/* ================================================================== */
+const C = { X0: -18, X1: 18, XB0: -19.5, XB1: 32, Lf: 7.7, H: 4.3, tip: -8, Lt: 1.6, pW: 3.5, pH: 1.3, slot: 0.42 };
+const MEM = { cerm: 0.78, ppm: 0.46, oem: 0.12, iem: 0, t: 0.04 };
+const SAC = 0.17, PITCH = 0.2;
+const sacs = top => [0, 1, 2].map(k => [top - k * PITCH - SAC, top - k * PITCH]);
+function uPath(o, n = 32) {
+  const R = C.H + o, pts = [[0.4, R]];
+  for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + k / n * Math.PI; pts.push([-C.Lf + R * Math.cos(a), R * Math.sin(a)]); }
+  pts.push([0.4, -R]); return pts;
+}
+function uBand(o1, o2) { const a = uPath(o1), b = uPath(o2).reverse(), pts = [...a, ...b]; return loft([{ x: C.XB0, pts }, { x: C.XB1, pts }], { crease: 0.6 }); }
+function pathSampler(pts) {
+  const L = [0]; for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const tot = L[L.length - 1];
+  return t => { const s = t * tot; let i = 1; while (i < L.length - 1 && L[i] < s) i++; const f = (s - L[i - 1]) / (L[i] - L[i - 1] || 1); return [lerp(pts[i - 1][0], pts[i][0], f), lerp(pts[i - 1][1], pts[i][1], f)]; };
+}
+const pU = x => clamp((C.tip + C.Lt - x) / C.Lt, 0, 1);
+const pHh = x => 0.55 + (C.pH - 0.55) * Math.sqrt(1 - pU(x) ** 2);
+const pWz = x => C.pW * (0.75 + 0.25 * Math.sqrt(1 - pU(x) ** 2));
+const pptW = x => x < C.tip ? 2.2 : 2.2 + 0.9 * Math.sqrt(1 - pU(x) ** 2);
+const BANDS = {
+  U: { poly: [[-6.5, -9.4], [22, -9.4], [22, 0.4], [-6.5, 0.4]], top: 2.95, x0: -6.5, x1: 18 },
+  L: { poly: [[-6.5, -9.4], [22, -9.4], [22, 0.4], [-6.5, 0.4]], top: -2.38, x0: -6.5, x1: 18 },
+  M: { poly: [[C.XB0, -11.0], [22, -11.0], [22, -4.6], [-9.4, -4.6], [-9.4, 0.4], [C.XB0, 0.4]], top: 0.285, x0: -18, x1: -9.4 },
+};
+const GL_TOP = C.H - 0.10;
+function pptPoly() { const pts = [[26, 0.4], [26, -3.1]]; for (let k = 0; k <= 12; k++) { const x = C.tip + C.Lt - k / 12 * C.Lt; pts.push([x, -pptW(x)]); } pts.push([-9.9, -2.2], [-9.9, 0.4]); return pts; }
+const tipXs = () => { const xs = []; for (let k = 0; k <= 18; k++) xs.push(C.tip + C.Lt * (1 - Math.cos(k / 18 * Math.PI / 2))); xs.push(4, 17.99); return xs; };
+function matrixSection(x, s, ND = 20) {
+  const W = pWz(x), hh = pHh(x), sw = pptW(x) + 0.03, pts = [[0, C.slot], [-sw, C.slot], [-sw, 0], [-W, 0]];
+  for (let k = 1; k <= ND; k++) { const f = k / ND * Math.PI / 2; pts.push([-W * Math.cos(f) ** 0.5, hh * Math.sin(f) ** 0.5]); }
+  pts[pts.length - 1][0] = 0;
+  return s > 0 ? pts : pts.map(([z, y]) => [z, -y]);
+}
+function shellSection(x, s, ND = 20) {
+  const W = pWz(x), hh = pHh(x), out = [], inn = [];
+  for (let k = 0; k <= ND; k++) {
+    const f = k / ND * Math.PI / 2, c = Math.cos(f) ** 0.5, sn = Math.sin(f) ** 0.5;
+    out.push([-(W + 0.075) * c, (hh + 0.075) * sn]); inn.push([-(W + 0.03) * c, (hh + 0.03) * sn]);
+  }
+  out.push([0.3, hh + 0.075]); inn.push([0.3, hh + 0.03]);
+  const pts = [...out, ...inn.reverse()];
+  return s > 0 ? pts : pts.map(([z, y]) => [z, -y]);
+}
+const dotGeo = (r, d = 0) => bare(new THREE.IcosahedronGeometry(r, d));
+/* Dots along a line on the front cut face. */
+function lineDots(list, x0, x1, y, step, z = 0.03, jit = 0.25) { for (let x = x0 + rnd() * step; x < x1; x += step * rr(1 - jit, 1 + jit)) list.push({ p: new THREE.Vector3(x, y, z) }); }
+
+function buildCERM(p) {
+  p.mesh(uBand(MEM.cerm + MEM.t, MEM.cerm - MEM.t), 'cerm', { inner: 'cerIn', rough: 0.5 });
+  const samp = pathSampler(uPath(MEM.cerm + MEM.t + 0.11, 80)), list = [];
+  for (let k = 0; k < 1500; k++) { const [z, y] = samp(rnd()); if (z > -0.08) continue; list.push({ p: new THREE.Vector3(rr(C.XB0, C.XB1), y, z), s: new THREE.Vector3(1, 0.85, 1) }); }
+  p.inst(dotGeo(0.11, 1), 'ribo', list, { rough: 0.5 });
+}
+function buildPPM(p) { p.mesh(uBand(MEM.ppm + MEM.t, MEM.ppm - MEM.t), 'ppm', { inner: 'ppmIn', rough: 0.5 }); }
+function buildPPC(p) {
+  const samp = pathSampler(uPath((MEM.ppm + MEM.oem) / 2, 80)), list = [];
+  for (let k = 0; k < 90; k++) { const [z, y] = samp(rnd()); if (z > -0.12) continue; const r = rr(0.07, 0.11); list.push({ p: new THREE.Vector3(rr(C.XB0, C.XB1), y, z), s: new THREE.Vector3(r * rr(1.2, 2.2), r, r * rr(1, 1.6)) }); }
+  p.inst(new THREE.SphereGeometry(1, 14, 10), 'ppcv', list, { rough: 0.45 });
+}
+function buildEnv(p) {
+  p.mesh(uBand(MEM.oem + MEM.t, MEM.oem - MEM.t), 'oem', { inner: 'envIn', rough: 0.5 });
+  p.mesh(uBand(MEM.iem + MEM.t, MEM.iem - MEM.t), 'iem', { inner: 'envIn', rough: 0.5 });
+}
+function buildGL(p) {
+  for (let k = 0; k < 3; k++) p.mesh(uBand(-0.10 - k * PITCH, -0.10 - k * PITCH - SAC), 'gl', { inner: 'lumen', rough: 0.55 });
+  const psi = [], psii = [];
+  for (const s of [1, -1]) {
+    lineDots(psi, -18, 18, s * (C.H - 0.10 + 0.03), 0.34); lineDots(psi, -18, 18, s * (C.H - 0.67 - 0.03), 0.34);
+    lineDots(psii, -18, 18, s * (C.H - 0.285), 0.3); lineDots(psii, -18, 18, s * (C.H - 0.485), 0.3);
+  }
+  addPS(p, psi, psii);
+  /* A faint fill for the stroma, so the open ends of the block read as a filled compartment. */
+  const a = uPath(-0.69, 40), pts = [...a, [0.4, 0]];
+  const fill = new THREE.Mesh(loft([{ x: -17.97, pts }, { x: C.XB1, pts }], { capStart: true, capEnd: true }), p.mat('plIn', { opacity: 0.32, rough: 0.9 }));
+  fill.raycast = () => {}; p.group.add(fill);
+}
+function addPS(p, psi, psii) {
+  p.overlay('ps', new THREE.InstancedMesh(dotGeo(0.075, 1), p.mat('psi', { noClip: true, rough: 0.4 }), psi.length));
+  p.overlay('ps', new THREE.InstancedMesh(dotGeo(0.085, 1), p.mat('psii', { noClip: true, rough: 0.4 }), psii.length));
+  const M = new THREE.Matrix4(), ims = p.over.slice(-2).map(o => o.obj);
+  psi.forEach((c, i) => { M.makeTranslation(c.p.x, c.p.y, c.p.z); ims[0].setMatrixAt(i, M); });
+  psii.forEach((c, i) => { M.makeTranslation(c.p.x, c.p.y, c.p.z); ims[1].setMatrixAt(i, M); });
+  for (const im of ims) { im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); }
+}
+function buildBands(p) {
+  const psi = [], psii = [], bst = [];
+  for (const B of Object.values(BANDS)) {
+    for (const [y0, y1] of sacs(B.top)) p.mesh(footprintSlab(B.poly, y0, y1, 0.05), 'thy', { inner: 'lumen', rough: 0.55 });
+    const t = B.top, b = B.top - 3 * SAC - 2 * (PITCH - SAC);
+    lineDots(psi, B.x0, B.x1, t + 0.03, 0.34); lineDots(psi, B.x0, B.x1, b - 0.03, 0.34);
+    lineDots(psii, B.x0, B.x1, t - 0.185, 0.3); lineDots(psii, B.x0, B.x1, t - 0.385, 0.3);
+    lineDots(bst, B.x0, B.x1, t + 0.035, B === BANDS.M ? 0.75 : 1.6, 0.04, 0.4); lineDots(bst, B.x0, B.x1, b - 0.035, B === BANDS.M ? 0.75 : 1.6, 0.04, 0.4);
+  }
+  addPS(p, psi, psii);
+  const im = new THREE.InstancedMesh(bare(new THREE.BoxGeometry(0.075, 0.1, 0.075)), p.mat('bst', { noClip: true, rough: 0.4 }), bst.length), M = new THREE.Matrix4();
+  bst.forEach((c, i) => { M.makeTranslation(c.p.x, c.p.y, c.p.z); im.setMatrixAt(i, M); }); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+  p.overlay('flux', im);
+}
+function buildMatrix(p) {
+  const xs = tipXs();
+  for (const s of [1, -1]) p.mesh(loft(xs.map(x => ({ x, pts: matrixSection(x, s) })), { capStart: true, capEnd: true, crease: 0.7 }), 'matrix', { rough: 0.7 });
+  /* Rubisco holoenzymes, as dots on the cut faces (about 11 nm across). */
+  const list = [], st = 0.135;
+  for (let x = C.tip + 0.12; x < 17.95; x += st) for (const s of [1, -1]) {
+    const hh = pHh(x);
+    for (let y = C.slot + 0.065; y < hh - 0.05; y += st) list.push({ p: new THREE.Vector3(x + rr(-0.03, 0.03), s * (y + rr(-0.025, 0.025)), 0.03) });
+  }
+  for (let z = -C.pW + 0.07; z < -0.04; z += st) for (const s of [1, -1]) {
+    const yt = C.pH * Math.max(0, 1 - (Math.abs(z) / C.pW) ** 4) ** 0.25, y0 = z < -(pptW(18) + 0.03) ? 0.06 : C.slot + 0.065;
+    for (let y = y0; y < yt - 0.05; y += st) list.push({ p: new THREE.Vector3(18.03, s * (y + rr(-0.025, 0.025)), z + rr(-0.03, 0.03)) });
+  }
+  p.inst(dotGeo(0.054, 0), 'rub', list, { rough: 0.6, noPick: false });
+}
+function buildShell(p) {
+  const xs = tipXs().map(x => x === 17.99 ? 19 : x);
+  for (const s of [1, -1]) p.mesh(loft(xs.map(x => ({ x, pts: shellSection(x, s) })), { capStart: true, crease: 0.7 }), 'shell', { rough: 0.35 });
+}
+function buildPPT(p) {
+  const poly = pptPoly();
+  p.mesh(footprintSlab(poly, 0.045, 0.375, 0.06), 'ppt', { inner: 'pptLumen', rough: 0.5 });
+  p.mesh(footprintSlab(poly, -0.375, -0.045, 0.06), 'ppt', { inner: 'pptLumen', rough: 0.5 });
+  const list = [];
+  for (let k = 0; k < 150; k++) { const x = rr(C.tip - 1.4, 17.9); list.push({ p: new THREE.Vector3(x, (rnd() < 0.5 ? 1 : -1) * rr(0.12, 0.3), -0.035) }); }
+  p.inst(dotGeo(0.038, 1), 'tca', list, { rough: 0.4, noPick: true });
+  const bst = []; for (const y of [0.405, -0.405]) lineDots(bst, C.tip - 1.2, 18, y, 2.6, 0.04, 0.5);
+  const im = new THREE.InstancedMesh(bare(new THREE.BoxGeometry(0.075, 0.1, 0.075)), p.mat('bst', { noClip: true, rough: 0.4 }), bst.length), M = new THREE.Matrix4();
+  bst.forEach((c, i) => { M.makeTranslation(c.p.x, c.p.y, c.p.z); im.setMatrixAt(i, M); }); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+  p.overlay('flux', im);
+}
+
+const MEMBOX = { focusBox: [[12.5, 3.7, -1.2], [18, 5.3, 0]], focusDir: [0.35, 0.18, 1] };
+const PLASTID_DEFS = [
+  {
+    id: 'cerm', title: 'Chloroplast ER membrane', label: 'cERM', sys: 'membranes', vec: [12, 0, 0], fly: [0, 1, 0], anchor: [-13.5, C.H + MEM.cerm + 0.06, -2.6], build: buildCERM, ...MEMBOX,
+    facts: [['Origin', 'host endomembrane'], ['Continuous with', 'the outer nuclear membrane'], ['Cytosolic face', 'ribosomes']],
+    what: 'The outermost of the four membranes. Ribosomes on its cytosolic face make nucleus-encoded chloroplast proteins and feed them into the chloroplast ER lumen, the thin space between this membrane and the next.',
+    key: 'For a nucleus-encoded chloroplast protein, the signal peptide at its front end takes it through this membrane as it is made. The transit peptide behind it is used later, at the two envelope membranes.',
+    note: ['Not to scale.', 'Membranes are drawn 8 nm thick, and the spaces between the outer three about 30 nm wide.'],
+  },
+  {
+    id: 'ppm', title: 'Periplastid membrane', label: 'PPM', sys: 'membranes', vec: [9.5, 0, 0], fly: [0, 1, 0], anchor: [-16.6, C.H + MEM.ppm, 0], build: buildPPM, ...MEMBOX,
+    facts: [['Origin', 'plasma membrane of the red-algal endosymbiont'], ['Import', 'through SELMA']],
+    what: 'The second membrane: once the plasma membrane of the red alga that the host engulfed.',
+    key: 'Proteins cross it through SELMA, a symbiont-specific ERAD-like machinery. It derives from the red alga’s system for pulling misfolded proteins out of its ER, reused here for import.',
+  },
+  {
+    id: 'ppc', title: 'Periplastidial compartment', label: 'PPC', sys: 'membranes', vec: [8, 0, 0], fly: [0, 1, 0], anchor: [-11.6, C.H + (MEM.ppm + MEM.oem) / 2, 0], build: buildPPC, ...MEMBOX,
+    facts: [['What', 'the remnant cytoplasm of the red alga'], ['Contains', 'a network of vesicles (Flori et al. 2016)'], ['Carbonic anhydrases', 'α-type, and possibly ι-type']],
+    what: 'The thin space between the periplastid membrane and the envelope, all that is left of the red alga’s cytoplasm. In diatoms, unlike cryptophytes, the endosymbiont’s nucleus is gone. PPC proteins gather in “blob-like structures”, which FIB-SEM resolved as a network of vesicles.',
+    key: 'Carbonic anhydrases sit here as well as in the stroma and the thylakoid lumen, and the PPC is reported to be slightly acidic. How inorganic carbon crosses the membranes on either side is still one of the open questions of the diatom CCM.',
+  },
+  {
+    id: 'env', title: 'Envelope', sys: 'membranes', vec: [6, 0, 0], fly: [0, 1, 0], anchor: [-8.4, C.H + 0.05, 0], build: buildEnv, ...MEMBOX,
+    facts: [['Membranes', 'outer and inner envelope membranes (oEM, iEM)'], ['Origin', 'the red alga’s chloroplast envelope, ultimately cyanobacterial'], ['Import', 'TOC and TIC complexes']],
+    what: 'The two innermost membranes, the counterpart of the double envelope around a land-plant chloroplast. Inside them lies the stroma.',
+    key: 'Carbon-flux measurements indicate that diatom chloroplasts take up inorganic carbon by active transport (Hopkinson et al. 2011), but the transporters in these membranes have not been identified with certainty.',
+  },
+  {
+    id: 'gl', title: 'Girdle lamella', sys: 'thylakoids', vec: [3.5, 0, 0], fly: [0, 1, 0], anchor: [-3.4, C.H - 0.385, 0], build: buildGL, focusBox: [[6, 2.4, -13], [18, 5.4, 0]], focusDir: [0.62, 0.26, 1],
+    facts: [['Thylakoids', 'a band of three'], ['Runs', 'right round the chloroplast, just inside the envelope']],
+    what: 'A band of three thylakoids that follows the envelope right round the chloroplast and encloses all the other bands. Girdle lamellae are typical of diatom and brown-algal chloroplasts.',
+    key: 'It is photosynthetic membrane like the inner bands, but its position is special: as a continuous sheet under the envelope, it is the first thylakoid membrane that anything entering the stroma meets.',
+  },
+  {
+    id: 'stroma', title: 'Stroma', sys: 'thylakoids', feature: true, dep: ['gl'], anchor: [-14, 1.7, 0], focusBox: [[-18, -3.6, -4], [-6, 3.6, 0]], focusDir: [0.15, 0.18, 1],
+    facts: [['Contains', 'Calvin–Benson cycle enzymes, plastid DNA and ribosomes'], ['Rubisco', 'mostly in the pyrenoid, not here']],
+    what: 'The aqueous space inside the envelope. Most of the Calvin–Benson cycle runs here: it turns the 3-phosphoglycerate coming out of the pyrenoid into sugar phosphates and regenerates the RuBP that goes back in.',
+    key: 'CO₂ that leaks out of the pyrenoid is not necessarily lost. Turned back into HCO₃⁻ in the stroma, with the help of carbonic anhydrases, it can return to the pyrenoid through the thylakoid lumen.',
+  },
+  {
+    id: 'thy', title: 'Thylakoid bands', label: 'Thylakoid band', sys: 'thylakoids', vec: [1.5, 0, 0], fly: [0, -1, 0], anchor: [3.0, BANDS.U.top - 0.285, 0], build: buildBands, focusBox: [[-18, -3.6, -6], [-3, 3.6, 0]], focusDir: [0.15, 0.15, 1],
+    facts: [['Stacking', 'loose bands of mostly three thylakoids, no grana'], ['PSII', 'mainly in the core membranes, inside the band'], ['PSI', 'mainly in the peripheral membranes, facing the stroma (Flori et al. 2017)'], ['Antenna', 'fucoxanthin–chlorophyll a/c proteins (FCPs)']],
+    what: 'The photosynthetic membranes. Light absorbed by the FCP antennae drives the light reactions. Water splitting and proton pumping acidify the lumen, and the proton gradient drives ATP synthesis.',
+    key: 'Segregation without grana. Even in loose bands of three, PSII sits mainly in the inner (core) membranes and PSI in the outer (peripheral) ones, which limits energy spillover from PSII to PSI. Connections between bands let electron carriers equilibrate quickly (Flori et al. 2017).',
+    note: ['Also part of the carbon route.', 'Bestrophins PtBST1, 2 and 4 sit in these membranes outside the pyrenoid, and are made in low CO₂. PtBST1 imports HCO₃⁻ into the lumen and sends it on towards the pyrenoid (Nigishi et al. 2024).'],
+  },
+  {
+    id: 'lumen', title: 'Thylakoid lumen', sys: 'thylakoids', feature: true, dep: ['thy'], anchor: [-15.5, BANDS.M.top - 0.085, 0], focusBox: [[-18, -1.3, -3], [-8, 1.3, 0]], focusDir: [0.1, 0.12, 1],
+    facts: [['pH', 'acidic in the light'], ['Network', 'joined to the lumen of the pyrenoid-penetrating thylakoids']],
+    what: 'The space inside each thylakoid. In the light, water splitting at PSII and proton pumping by cytochrome b₆f make it acidic.',
+    key: 'The acid is used twice: by ATP synthase, and by the CCM. In acid, HCO₃⁻ + H⁺ → CO₂ + H₂O is favoured, so HCO₃⁻ that has diffused through the lumen into the pyrenoid can be turned into CO₂ there.',
+    note: ['Try it.', 'Turn on Carbon route, then switch the Light off. The lumen is no longer acidified, and HCO₃⁻ piles up in the pyrenoid’s thylakoids instead of becoming CO₂.'],
+  },
+  {
+    id: 'matrix', title: 'Pyrenoid matrix', label: 'Rubisco matrix', sys: 'pyrenoid', vec: [0, 0, 0], fly: [0, 0, -1], clip: false, anchor: [8, 0.95, 0.03], build: buildMatrix, focusBox: [[3, -1.8, -4], [18, 1.8, 0]], focusDir: [0.55, 0.2, 1],
+    facts: [['Main protein', 'Rubisco, red-type Form ID'], ['Linker', 'PYCO1 (Oh et al. 2023)'], ['Also', 'β-carbonic anhydrases PtCA1 and PtCA2; fructose-1,6-bisphosphate aldolases'], ['Mobility', 'low: PYCO1 barely recovers after photobleaching']],
+    what: 'A dense condensate of Rubisco, held together by the repeat protein PYCO1, which binds Rubisco through several sticker motifs. It is drawn here as a rod 0.7 µm wide and 0.26 µm thick; each dot on the cut faces is one Rubisco.',
+    key: 'Not a liquid droplet. The Chlamydomonas pyrenoid mixes internally like a liquid; in Phaeodactylum, PYCO1 hardly moves, much as in PYCO1 condensates saturated with Rubisco in vitro. Such viscous material may be what lets the pyrenoid keep its rod shape (Oh et al. 2023).',
+    link: ['pyr', 'rubisco', 'Go to the molecular scale ▸'],
+  },
+  {
+    id: 'shell', title: 'PyShell', sys: 'pyrenoid', vec: [0, 0, 0], fly: [0, 1, 0], anchor: [12, pHh(12) + 0.05, 0], build: buildShell, focusBox: [[-11, -1.9, -4.2], [-1, 1.9, 0]], focusDir: [0.3, 0.42, 1],
+    facts: [['Proteins', 'PyShell1 and PyShell2 (Shimakawa et al. 2024)'], ['Form', 'a lattice-like protein sheath round the Rubisco matrix'], ['In Phaeodactylum', 'flat and straight, with a gap at each end for the thylakoids']],
+    what: 'A protein lattice that encases the matrix. It was found by photo-crosslinking pyrenoid proteins in living cells and then seen directly by cryo-electron tomography in Phaeodactylum and Thalassiosira.',
+    key: 'It shapes the pyrenoid. Thalassiosira mutants lacking PyShell1 and 2 had no sheath and several rounder, fragmented pyrenoids, their thylakoids no longer crossed the matrix, and they needed high CO₂: photosynthesis saturated only above 10 mM inorganic carbon, against under 0.5 mM in the wild type.',
+    note: ['A barrier?', 'The shell may slow CO₂ leaking out of the pyrenoid and O₂ getting in. That is still a hypothesis: its permeability has not been measured.'],
+    link: ['pyr', 'shellP', 'See the lattice up close ▸'],
+  },
+  {
+    id: 'ppt', title: 'Pyrenoid-penetrating thylakoids', label: 'PPT', sys: 'pyrenoid', vec: [0, 0, 4], fly: [0, 0, 1], anchor: [-9.3, 0.2, 0], build: buildPPT, focusBox: [[-12, -1.5, -4], [-3, 1.5, 0]], focusDir: [0.18, 0.14, 1],
+    facts: [['Number', 'two thylakoids, running the length of the pyrenoid'], ['Lumen', 'swollen, sometimes with dense particles'], ['Lumen enzyme', 'θ-carbonic anhydrase Ptθ-CA1 (Kikutani et al. 2016)'], ['Ends', 'pass out through gaps in the PyShell and join the other thylakoids']],
+    what: 'Two specialised thylakoids that run along the long axis of the pyrenoid and divide the Rubisco matrix into two halves. At each end they leave through a gap in the PyShell and join the rest of the thylakoid network, so their lumen is continuous with it.',
+    key: 'The CO₂-evolving machinery. In the light the PPT lumen is acidic and Ptθ-CA1 converts HCO₃⁻ to CO₂, which crosses the membrane easily and diffuses straight into the surrounding Rubisco. Knocking Ptθ-CA1 down lowered the cells’ affinity for inorganic carbon and slowed growth in air (Kikutani et al. 2016), and without it photosynthesis is not saturated even at elevated CO₂ (Shimakawa et al. 2023).',
+    note: ['Convergent evolution.', 'Chlamydomonas does the same with a different enzyme family: the α-carbonic anhydrase CAH3 in the lumen of its pyrenoid tubules.'],
+    link: ['pyr', 'tca', 'Inside the PPT ▸'],
+  },
+];
+
+/* ================================================================== */
+/* VIEW 3: molecular scale. 1 unit = 1 nm. A block from the middle of   */
+/* the pyrenoid: the two PPT thylakoids at the bottom, Rubisco matrix,  */
+/* and the PyShell at the top. Schematic: positions are illustrative.   */
+/* ================================================================== */
+const Q = { X: 60, Z: 36, yB: -26, m0: 31, m1: 143.5, s0: 150.5, s1: 155, top: 168 };
+const BILAYERS = [[-24, -20], [-6, -2], [2, 6], [20, 24]];
+const RUB = [];   /* filled when the matrix is built: { c, q, axis } */
+function rubiscoGeos() {
+  const L = [], S = [];
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * TAU, up = k % 2 ? -1 : 1, g = new THREE.IcosahedronGeometry(1, 1);
+    g.scale(2.0, 2.7, 2.35); g.rotateY(-a); g.translate(3.55 * Math.cos(a), up * 1.25, 3.55 * Math.sin(a)); L.push(bare(g));
+  }
+  for (const s of [1, -1]) for (let k = 0; k < 4; k++) {
+    const a = (k + 0.5) / 4 * TAU + (s < 0 ? Math.PI / 4 : 0), g = new THREE.IcosahedronGeometry(1.45, 1);
+    g.translate(2.85 * Math.cos(a), s * 4.0, 2.85 * Math.sin(a)); S.push(bare(g));
+  }
+  return { L: merge(L), S: merge(S) };
+}
+function placeRubisco() {
+  if (RUB.length) return;
+  const r = mulberry32(7181), pts = [];
+  for (let t = 0; t < 60000 && pts.length < 420; t++) {
+    const c = new THREE.Vector3(lerp(-53.5, 53.5, r()), lerp(Q.m0, Q.m1, r()), lerp(-29.5, 29.5, r()));
+    if (pts.some(q => q.distanceToSquared(c) < 14.2 * 14.2)) continue;
+    pts.push(c);
+  }
+  for (const c of pts) {
+    const u1 = r(), u2 = r(), u3 = r();
+    const q = new THREE.Quaternion(Math.sqrt(1 - u1) * Math.sin(TAU * u2), Math.sqrt(1 - u1) * Math.cos(TAU * u2), Math.sqrt(u1) * Math.sin(TAU * u3), Math.sqrt(u1) * Math.cos(TAU * u3));
+    RUB.push({ c, q, axis: UP.clone().applyQuaternion(q) });
+  }
+}
+function boxWithBilayerUV(sx, sy, sz) {
+  const g = new THREE.BoxGeometry(sx, sy, sz), n = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) {
+    const nx = Math.abs(n.getX(i)), ny = Math.abs(n.getY(i));
+    if (ny > 0.5) uv.setXY(i, 0.5, 0.94);
+    else uv.setX(i, uv.getX(i) * (nx > 0.5 ? sz : sx) / 4);
+  }
+  return g;
+}
+function buildPPTMem(p) {
+  const m = p.mat('pptMem', { rough: 0.6, extra: { map: BILAYER_TEX } });
+  for (const [y0, y1] of BILAYERS) { const g = boxWithBilayerUV(2 * Q.X, y1 - y0, 2 * Q.Z); g.translate(0, (y0 + y1) / 2, 0); p.add(new THREE.Mesh(g, m)); }
+}
+function buildRubisco(p) {
+  placeRubisco();
+  const { L, S } = rubiscoGeos(), list = RUB.map(R => ({ p: R.c, q: R.q }));
+  p.inst(L, 'rbcL', list, { rough: 0.55 });
+  p.inst(S, 'rbcS', list, { rough: 0.55 });
+  const front = RUB.filter(R => R.c.z > 20 && R.c.y > 70 && R.c.y < 110).sort((a, b) => Math.abs(a.c.x + 20) - Math.abs(b.c.x + 20))[0] || RUB[0];
+  p.anchor.copy(front.c).add(new THREE.Vector3(0, 0, 5.5));
+}
+function buildPYCO(p) {
+  placeRubisco();
+  const r = mulberry32(911), tubes = [], beads = [], used = new Map();
+  const site = (R, dir) => {
+    const d = R.axis.dot(dir);
+    if (Math.abs(d) > 0.45) { const s = Math.sign(d); return { p: R.c.clone().addScaledVector(R.axis, s * 5.7), n: R.axis.clone().multiplyScalar(s), cap: true }; }
+    const e = dir.clone().addScaledVector(R.axis, -d).normalize();
+    return { p: R.c.clone().addScaledVector(e, 5.9), n: e, cap: false };
+  };
+  let mid = null;
+  for (let i = 0; i < RUB.length; i++) for (let j = i + 1; j < RUB.length; j++) {
+    const A = RUB[i], B = RUB[j], dist = A.c.distanceTo(B.c);
+    if (dist > 21.5 || r() > 0.62) continue;
+    if ((used.get(i) || 0) > 3 || (used.get(j) || 0) > 3) continue;
+    used.set(i, (used.get(i) || 0) + 1); used.set(j, (used.get(j) || 0) + 1);
+    const dir = B.c.clone().sub(A.c).normalize(), sa = site(A, dir), sb = site(B, dir.clone().negate());
+    const m = sa.p.clone().lerp(sb.p, 0.5).add(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(5));
+    const pts = [sa.p, sa.p.clone().addScaledVector(sa.n, 1.6), m, sb.p.clone().addScaledVector(sb.n, 1.6), sb.p];
+    tubes.push(bare(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.42, 5, false)));
+    for (const s of [sa, sb]) {
+      beads.push({ p: s.p.clone() });
+      if (s.cap) beads.push({ p: s.p.clone().addScaledVector(s.n, 0.4).add(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(1.6)) });
+    }
+    if (!mid && A.c.z > 18 && B.c.z > 18 && m.y > 60 && m.y < 120) mid = m;
+  }
+  p.mesh(merge(tubes), 'pyco', { rough: 0.5 });
+  p.inst(dotGeo(0.95, 1), 'sticker', beads, { rough: 0.45 });
+  if (mid) p.anchor.copy(mid);
+  p.nChains = tubes.length;
+}
+function buildShellP(p) {
+  const list = [], g = new THREE.IcosahedronGeometry(1, 1); g.scale(2.35, 1.5, 1.6);
+  let row = 0;
+  for (let z = -Q.Z + 1.8; z < Q.Z - 1; z += 3.5, row++) for (let x = -Q.X + 2.4 + (row % 2) * 2.5; x < Q.X - 1.5; x += 5.0) {
+    list.push({ p: new THREE.Vector3(x, (Q.s0 + Q.s1) / 2 + (row % 2 ? 0.4 : -0.4), z), q: new THREE.Quaternion().setFromAxisAngle(UP, (row % 2 ? 0.18 : -0.18)) });
+  }
+  p.inst(bare(g), 'shellP', list, { rough: 0.4 });
+  const sheet = new THREE.BoxGeometry(2 * Q.X, 1.2, 2 * Q.Z); sheet.translate(0, (Q.s0 + Q.s1) / 2, 0);
+  p.mesh(bare(sheet), 'shellP', { rough: 0.5 });
+  p.nUnits = list.length;
+}
+const TCA = [];
+function buildTCA(p) {
+  const r = mulberry32(431), parts = [];
+  const a = new THREE.SphereGeometry(1.9, 14, 10); a.translate(-1.5, 0, 0);
+  const b = new THREE.SphereGeometry(1.9, 14, 10); b.translate(1.5, 0, 0);
+  const g = merge([bare(a), bare(b)]);
+  for (const s of [1, -1]) for (let k = 0; k < 22; k++) {
+    const c = new THREE.Vector3(lerp(-55, 55, r()), s * lerp(9.5, 16.5, r()), k < 11 ? lerp(22, 33, r()) : lerp(-32, 22, r()));
+    if (TCA.some(t => t.c.distanceTo(c) < 7)) continue;
+    TCA.push({ c, s });
+    parts.push({ p: c, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(r() * 3, r() * 3, r() * 3)) });
+  }
+  p.inst(g, 'tcaP', parts, { rough: 0.45 });
+  const f = TCA.filter(t => t.s > 0 && t.c.z > 22).sort((a, b) => Math.abs(a.c.x - 18) - Math.abs(b.c.x - 18))[0];
+  if (f) p.anchor.copy(f.c);
+}
+function buildBST3(p) {
+  const r = mulberry32(77), list = [], sub = [];
+  for (let k = 0; k < 5; k++) { const a = k / 5 * TAU, g = new THREE.CapsuleGeometry(1.35, 4.6, 4, 10); g.translate(2.5 * Math.cos(a), 0, 2.5 * Math.sin(a)); sub.push(bare(g)); }
+  const g = merge(sub);
+  const spots = [[-38, 26], [-12, 30], [14, 27], [40, 31], [-50, 4], [30, -6], [0, -18]];
+  for (const [x, z] of spots) for (const s of [1, -1]) {
+    if (s < 0 && r() < 0.5) continue;
+    list.push({ p: new THREE.Vector3(x + (r() - 0.5) * 6, s * 22.3, z), q: new THREE.Quaternion().setFromAxisAngle(UP, r() * TAU) });
+  }
+  p.inst(g, 'bst3', list, { rough: 0.45 });
+  const f = list.filter(l => l.p.y > 0 && l.p.z > 25).sort((a, b) => Math.abs(a.p.x + 12) - Math.abs(b.p.x + 12))[0];
+  if (f) p.anchor.copy(f.p).add(new THREE.Vector3(0, 3, 0));
+}
+
+const PYR_DEFS = [
+  {
+    id: 'shellP', title: 'PyShell', sys: 'boundary', vec: [0, 55, 0], anchor: [-34, Q.s1 + 0.6, 26], build: buildShellP, focusBox: [[-60, 128, -36], [60, 160, 36]], focusDir: [0.3, 0.75, 1],
+    facts: [['In the cell', 'a lattice-like sheath seen by cryo-ET (Shimakawa et al. 2024)'], ['In vitro', 'Thalassiosira PyShell1 forms helical tubes; 2.4 Å structure, PDB 8WQP'], ['Drawn', 'as a schematic lattice; the spacing is illustrative']],
+    what: 'The protein sheath on the outside of the Rubisco matrix. Its subunits interlock into a continuous sheet; beyond it lies the stroma.',
+    key: 'Everything the Calvin–Benson cycle exchanges with Rubisco, RuBP going in and 3-phosphoglycerate coming out, has to cross this sheet or go round it. How it does so is not known, because the sheet’s permeability has not been measured.',
+  },
+  {
+    id: 'rubisco', title: 'Rubisco', sys: 'matrix', vec: [0, 26, 0], anchor: [0, 90, 30], build: buildRubisco, focusBox: [[-32, 58, 8], [32, 122, 36]], focusDir: [0.25, 0.2, 1],
+    facts: () => [['Form', 'red-type Form ID, L₈S₈, about 11 nm across'], ['Genes', 'rbcL and rbcS, both in the plastid genome'], ['Affinity for CO₂', 'K<sub>C</sub> about 23–60 µM across diatoms, against about 10 µM in land plants (Young et al. 2016)'], ['Structure', 'PDB 7YK5, with bound PYCO1 peptides (2.0 Å; Oh et al. 2023)'], ['In this block', `${RUB.length} holoenzymes, drawn about 15 nm apart`]],
+    what: 'The CO₂-fixing enzyme. It adds CO₂ to ribulose-1,5-bisphosphate, giving two molecules of 3-phosphoglycerate. Each holoenzyme has eight large subunits (blue), which carry the active sites, capped above and below by four small subunits each (pale).',
+    key: 'Diatoms have a red-type Rubisco, not the green type of plants and green algae. Both its subunits are made inside the chloroplast, while the linker that gathers them, PYCO1, is encoded in the nucleus. Packed into the pyrenoid, Rubisco meets CO₂ at a far higher concentration than in the stroma, which favours carboxylation over oxygenation.',
+    note: ['Activase.', 'Diatoms have no plant-type Rca. A plastid-encoded and a nucleus-encoded CbbX form a red-type activase complex, reported to sit in the pyrenoid; red-type activases free inhibited Rubisco by threading the C-terminal tail of the large subunit (Loganathan et al. 2016).'],
+  },
+  {
+    id: 'pyco', title: 'PYCO1', sys: 'matrix', vec: [0, 26, 0], anchor: [0, 90, 25], build: buildPYCO, focusBox: [[-32, 58, 8], [32, 122, 36]], focusDir: [0.25, 0.2, 1],
+    facts: [['Type', 'tandem repeat protein with prion-like domains'], ['Binds Rubisco', 'sticker motifs that oligomerise on the small subunits lining the central solvent channel; a second motif binds the large subunit'], ['Alone', 'phase-separates, depending on salt']],
+    what: 'The pyrenoid’s linker. Each PYCO1 carries several Rubisco-binding stickers, so it can cross-link many holoenzymes into one network, the pyrenoid matrix. Here the chains are purple and the stickers dark beads, paired where they cluster at the solvent channel.',
+    key: 'Strong stickers make a stiff condensate. Because PYCO1 stickers oligomerise, they bind Rubisco with high affinity, and condensates saturated with Rubisco barely move, unlike the liquid-like matrix that EPYC1 forms in Chlamydomonas (Oh et al. 2023).',
+    note: ['Aromatic glue.', 'A 2024 follow-up found that PYCO1 condensing on its own depends on aromatic residues (π–π interactions). At least two of its six repeats are needed, and removing lysines and arginines makes it condense more readily.'],
+  },
+  {
+    id: 'mem', title: 'Pyrenoid-penetrating thylakoids', label: 'PPT membranes', sys: 'ppt', vec: [0, 0, 0], fly: [0, -1, 0], anchor: [-46, 23.5, Q.Z], build: buildPPTMem, focusBox: [[-42, -26, 6], [42, 30, 36]], focusDir: [0.2, 0.15, 1],
+    facts: [['Here', 'two thylakoids: four lipid bilayers'], ['Lumen', 'swollen; drawn 14 nm wide'], ['Bilayer', 'about 4 nm']],
+    what: 'The two thylakoids that run through the pyrenoid, seen edge-on at the bottom of the block. The Rubisco matrix lies against them above and below.',
+    key: 'Their lumen is continuous with the rest of the thylakoid network. HCO₃⁻ that bestrophins import into the stromal thylakoids can therefore diffuse along the lumen into the middle of the Rubisco.',
+  },
+  {
+    id: 'lumenP', title: 'PPT lumen', sys: 'ppt', feature: true, dep: ['mem'], anchor: [-30, 13, Q.Z], focusBox: [[-34, -24, 10], [34, 26, 36]], focusDir: [0.15, 0.1, 1],
+    facts: [['pH', 'acidic in the light'], ['In cryo-ET', 'swollen, sometimes with dense particles of unknown identity']],
+    what: 'The space inside the pyrenoid-penetrating thylakoids, where HCO₃⁻ becomes CO₂.',
+    key: 'Shimakawa et al. (2024) saw that this lumen is wider than in other thylakoids and sometimes holds dense particles. What the particles are is not known.',
+  },
+  {
+    id: 'tca', title: 'θ-carbonic anhydrase', label: 'θ-CA', sys: 'ppt', vec: [0, 0, 0], fly: [0, 0, 1], anchor: [18, 13, 30], build: buildTCA, focusBox: [[-30, -22, 14], [30, 22, 36]], focusDir: [0.15, 0.1, 1],
+    facts: [['Protein', 'Ptθ-CA1 (Pt43233), a CGHR-family protein'], ['Where', 'lumen of the pyrenoid-penetrating thylakoids'], ['Reaction', 'HCO₃⁻ + H⁺ ⇌ CO₂ + H₂O']],
+    what: 'Kikutani et al. (2016) showed that this CGHR-family protein of Phaeodactylum is a carbonic anhydrase, defining a new class, θ-CA, and that it sits in the lumen of the thylakoids that cross the pyrenoid. It is drawn as a dimer for illustration.',
+    key: 'A carbonic anhydrase speeds the reaction both ways; the acid lumen sets the direction. With the lumen acidified by photosynthesis, the balance shifts towards CO₂, released right inside the Rubisco matrix.',
+    note: ['Try it.', 'Turn on Carbon route and switch the Light off: HCO₃⁻ keeps arriving, but hardly any CO₂ is made.'],
+  },
+  {
+    id: 'bst3', title: 'Bestrophin PtBST3', label: 'PtBST3', sys: 'ppt', vec: [0, 9, 0], anchor: [-12, 25, 30], build: buildBST3, focusBox: [[-30, -24, 14], [30, 34, 36]], focusDir: [0.2, 0.25, 1],
+    facts: [['Family', 'bestrophin-like anion channels (pentamers)'], ['Where', 'the pyrenoid-penetrating thylakoids (Nigishi et al. 2024)'], ['Made', 'in low CO₂']],
+    what: 'Bestrophins are anion channels, and several are permeable to HCO₃⁻. Of the four in Phaeodactylum, PtBST3 is in the pyrenoid, while PtBST1, 2 and 4 are in thylakoids outside it.',
+    key: 'Knockouts of PtBST1 show that bestrophins outside the pyrenoid import HCO₃⁻ into the lumen for the CCM. What PtBST3 does inside the pyrenoid has not yet been tested; it is drawn here in the membranes facing the matrix.',
+  },
+];
+
+/* ================================================================== */
+/* Carbon route animations                                             */
+/* ================================================================== */
+function pointCloud(v, n, size) {
+  const pos = new Float32Array(n * 3).fill(1e5), colr = new Float32Array(n * 3), geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(colr, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: DOT_TEX, alphaTest: 0.5, vertexColors: true, sizeAttenuation: true }));
+  pts.frustumCulled = false; pts.raycast = () => {}; pts.renderOrder = 5; pts.visible = false; v.root.add(pts);
+  return { pts, pos, colr, geo, done() { geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true; } };
+}
+const CH = new THREE.Color(FLUX_COL.hco3), CC = new THREE.Color(FLUX_COL.co2), CF = new THREE.Color(FLUX_COL.fix), CP = new THREE.Color(FLUX_COL.h);
+function recent(list, now, win) { while (list.length && list[0] < now - win) list.shift(); return list.length / win; }
+
+/* Cell: HCO3- from seawater through SLC4, across the cytosol and the chloroplast to the pyrenoid. */
+function cellFlux(v) {
+  const N = 64, A = pointCloud(v, N, 0.3), P = [];
+  const spawn = q => {
+    const x0 = rr(-3.4, 3.4), th0 = rr(-1.75, -0.3), x1 = clamp(x0 * 0.85 + rr(-0.3, 0.3), -4.5, 4.5), x2 = clamp(x1 * 0.75 + rr(-0.4, 0.4), -2.7, 2.7);
+    q.w = [cellPt(x0, th0, -1.6), cellPt(x0, th0, -0.02), cellPt(x0 * 0.95, th0 * 0.9, 0.38), cellPt(x1, -plTh(x1) * 0.95, plMid(x1)), cellPt(x2, -0.1 / rMid(x2), plMid(x2))].map(a => new THREE.Vector3(...a));
+    q.seg = 0; q.f = 0; q.fix = 0; q.sp = rr(0.8, 1.2);
+  };
+  for (let i = 0; i < N; i++) { const q = {}; spawn(q); q.seg = Math.floor(rnd() * 4); q.f = rnd(); P.push(q); }
+  const t = new THREE.Vector3();
+  return {
+    clouds: [A],
+    step(dt) {
+      P.forEach((q, i) => {
+        if (q.fix > 0) { q.fix -= dt; if (q.fix <= 0) spawn(q); }
+        else {
+          const L = q.w[q.seg].distanceTo(q.w[q.seg + 1]) || 1e-3;
+          q.f += dt * q.sp * (q.seg === 0 ? 1.4 : 0.85) / L;
+          if (q.f >= 1) { q.seg++; q.f = 0; if (q.seg >= q.w.length - 1) { q.fix = 1.0; q.seg = q.w.length - 2; q.f = 1; } }
+        }
+        t.lerpVectors(q.w[q.seg], q.w[q.seg + 1], Math.min(1, q.f));
+        if (!q.fix) { t.x += 0.05 * Math.sin(q.f * 17 + i); t.y += 0.05 * Math.cos(q.f * 13 + i); }
+        A.pos[3 * i] = t.x; A.pos[3 * i + 1] = t.y; A.pos[3 * i + 2] = t.z;
+        (q.fix > 0 ? (q.fix > 0.45 ? CC : CF) : CH).toArray(A.colr, 3 * i);
+      });
+      A.done();
+    },
+    legend: () => '',
+  };
+}
+
+/* Chloroplast section: drawn on the front cut face. */
+function plastidFlux(v) {
+  const NB = 72, NH = 120, A = pointCloud(v, NB, 0.25), H = pointCloud(v, NH, 0.16), Z = 0.08, P = [], made = [];
+  const SP = [2.4, 0.55, 2.8, 3.4, 1.1];
+  const spawn = q => {
+    const s = rnd() < 0.5 ? 1 : -1, xa = rr(-17.3, -10.6), xc = rr(C.tip - 0.4, 17.2);
+    q.s = s; q.w = [[xa, s * 6.3], [xa + rr(-0.3, 0.3), s * 0.34], [xa + rr(-0.3, 0.3), s * 0.2], [-9.65, s * 0.2], [xc, s * 0.21], [xc + rr(-0.35, 0.35), s * rr(0.62, 1.12)]];
+    q.seg = 0; q.f = 0; q.wait = 0; q.mode = 'h'; q.fix = 0;
+  };
+  for (let i = 0; i < NB; i++) { const q = {}; spawn(q); q.seg = Math.floor(rnd() * 4); q.f = rnd(); P.push(q); }
+  const HSEG = [];
+  for (const s of [1, -1]) {
+    for (let k = 0; k < 3; k++) HSEG.push({ x0: -18, x1: 18, y: s * (C.H - 0.185 - k * PITCH) });
+    const B = s > 0 ? BANDS.U : BANDS.L; for (let k = 0; k < 3; k++) HSEG.push({ x0: B.x0 + 0.15, x1: 18, y: B.top - 0.085 - k * PITCH });
+    HSEG.push({ x0: -9.8, x1: 18, y: s * 0.21 }, { x0: -9.8, x1: 18, y: s * 0.21 });
+  }
+  for (let k = 0; k < 3; k++) HSEG.push({ x0: -18, x1: -9.5, y: BANDS.M.top - 0.085 - k * PITCH });
+  const HP = []; for (let i = 0; i < NH; i++) { const sg = HSEG[Math.floor(rnd() * HSEG.length)]; HP.push({ sg, x: rr(sg.x0, sg.x1), ph: rnd() * TAU }); }
+  for (let i = 0; i < NH; i++) CP.toArray(H.colr, 3 * i);
+  let clock = 0;
+  return {
+    clouds: [A, H],
+    step(dt) {
+      clock += dt;
+      P.forEach((q, i) => {
+        let x, y;
+        if (q.fix > 0) { q.fix -= dt; if (q.fix <= 0) spawn(q); [x, y] = q.w[5]; }
+        else if (q.mode === 'wait') {
+          q.w[4][0] = clamp(q.w[4][0] + (rnd() - 0.5) * dt * 3, C.tip - 0.5, 17.6);
+          const p = state.light ? dt * 5 : dt * 0.008;
+          if (rnd() < p) { q.mode = 'c'; q.seg = 4; q.f = 0; made.push(clock); q.w[5][0] = q.w[4][0] + rr(-0.35, 0.35); }
+          [x, y] = q.w[4];
+        } else {
+          const a = q.w[q.seg], b = q.w[q.seg + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-3;
+          q.f += dt * SP[q.seg] / L;
+          if (q.f >= 1) {
+            if (q.seg === 3) { q.mode = 'wait'; q.f = 1; }
+            else if (q.seg === 4) { q.fix = 0.45; q.f = 1; }
+            else { q.seg++; q.f = 0; }
+          }
+          const f = Math.min(1, q.f); x = lerp(a[0], b[0], f); y = lerp(a[1], b[1], f);
+          if (q.seg === 0 || q.seg === 4) { x += 0.06 * Math.sin(q.f * 23 + i); }
+        }
+        A.pos[3 * i] = x; A.pos[3 * i + 1] = y; A.pos[3 * i + 2] = Z;
+        (q.fix > 0 ? CF : q.mode === 'c' ? CC : CH).toArray(A.colr, 3 * i);
+      });
+      A.done();
+      H.pts.visible = A.pts.visible && state.light;
+      if (H.pts.visible) {
+        HP.forEach((h, i) => {
+          h.x = clamp(h.x + (rnd() - 0.5) * dt * 2.2, h.sg.x0, h.sg.x1); h.ph += dt * 3;
+          H.pos[3 * i] = h.x; H.pos[3 * i + 1] = h.sg.y + 0.025 * Math.sin(h.ph); H.pos[3 * i + 2] = Z;
+        });
+        H.done();
+      }
+    },
+    legend: () => `<span class="ctr">CO₂ released in the PPT: <b id="ctrA">${recent(made, clock, 6).toFixed(1)}</b> per second (model)</span>`,
+    counters: () => { const e = $('ctrA'); if (e) e.textContent = recent(made, clock, 6).toFixed(1); },
+  };
+}
+
+/* Molecular view: HCO3- diffuses along the PPT lumen; θ-CA makes CO2, which diffuses into the matrix and meets Rubisco. */
+function pyrFlux(v) {
+  const NB = 48, NH = 80, A = pointCloud(v, NB, 2.4), H = pointCloud(v, NH, 1.5), Z = 37.6, P = [], made = [], fixed = [];
+  const FRONT = RUB.filter(R => R.c.z > 16);
+  const near = TCA.filter(t => t.c.z > 0);
+  const spawn = (q, anywhere = false) => { q.s = rnd() < 0.55 ? 1 : -1; q.x = anywhere ? rr(-60, 55) : rr(-64, -58); q.y = q.s * rr(8.5, 17.5); q.k = 'h'; q.t = 0; };
+  for (let i = 0; i < NB; i++) { const q = {}; spawn(q, true); P.push(q); }
+  const HP = []; for (let i = 0; i < NH; i++) HP.push({ s: i % 2 ? 1 : -1, x: rr(-58, 58), y: rr(7.5, 18.5), ph: rnd() * TAU });
+  for (let i = 0; i < NH; i++) CP.toArray(H.colr, 3 * i);
+  let clock = 0;
+  return {
+    clouds: [A, H],
+    step(dt) {
+      clock += dt; dt = Math.min(dt, 0.05);
+      P.forEach((q, i) => {
+        if (q.k === 'h') {
+          q.x += (12 + (rnd() - 0.5) * 60) * dt; q.y += (rnd() - 0.5) * 60 * dt;
+          const ay = clamp(Math.abs(q.y), 7.6, 18.4); q.y = q.s * ay;
+          for (const t of near) if (t.s === q.s && Math.abs(t.c.x - q.x) < 5 && Math.abs(t.c.y - q.y) < 5) {
+            if (rnd() < (state.light ? 4 : 0.02) * dt) { q.k = 'c'; made.push(clock); }
+            break;
+          }
+          if (q.x > 62) spawn(q);
+        } else if (q.k === 'c') {
+          q.x += (rnd() - 0.5) * 70 * dt; q.y += q.s * 16 * dt + (rnd() - 0.5) * 70 * dt;
+          if (q.s > 0) {
+            if (q.y > 148) q.y = 148;
+            if (q.y > 25) for (const R of FRONT) { const dx = q.x - R.c.x, dy = q.y - R.c.y; if (dx * dx + dy * dy < 42) { q.k = 'f'; q.t = 0.5; fixed.push(clock); break; } }
+          } else if (q.y < -28) spawn(q);
+          if (Math.abs(q.x) > 62) spawn(q);
+        } else { q.t -= dt; if (q.t <= 0) spawn(q); }
+        A.pos[3 * i] = q.x; A.pos[3 * i + 1] = q.y; A.pos[3 * i + 2] = Z;
+        (q.k === 'h' ? CH : q.k === 'c' ? CC : CF).toArray(A.colr, 3 * i);
+      });
+      A.done();
+      H.pts.visible = A.pts.visible && state.light;
+      if (H.pts.visible) {
+        HP.forEach((h, i) => {
+          h.x = clamp(h.x + (rnd() - 0.5) * dt * 50, -59, 59); h.y = clamp(h.y + (rnd() - 0.5) * dt * 30, 7.4, 18.6);
+          H.pos[3 * i] = h.x; H.pos[3 * i + 1] = h.s * h.y; H.pos[3 * i + 2] = Z;
+        });
+        H.done();
+      }
+    },
+    legend: () => `<span class="ctr">CO₂ made <b id="ctrA">${recent(made, clock, 8).toFixed(1)}</b> · fixed in view <b id="ctrB">${recent(fixed, clock, 8).toFixed(1)}</b> per second (model)</span>`,
+    counters: () => { const a = $('ctrA'), b = $('ctrB'); if (a) a.textContent = recent(made, clock, 8).toFixed(1); if (b) b.textContent = recent(fixed, clock, 8).toFixed(1); },
+  };
+}
+
+/* ================================================================== */
+/* Views                                                               */
+/* ================================================================== */
+const SYS = {
+  surface: { en: 'Cell surface', col: '#9ea8cb' }, plastid: { en: 'Chloroplast', col: '#b9892a' }, host: { en: 'Host cell', col: '#d9805f' },
+  membranes: { en: 'Four membranes', col: '#9a7cc4' }, thylakoids: { en: 'Stroma and thylakoids', col: '#b08a2c' }, pyrenoid: { en: 'Pyrenoid', col: '#6585b3' },
+  boundary: { en: 'Pyrenoid boundary', col: '#2a9d8f' }, matrix: { en: 'Rubisco matrix', col: '#5f86bd' }, ppt: { en: 'Pyrenoid-penetrating thylakoids', col: '#c4507f' },
+};
+function scaleBar(v, a, b, w) {
+  const m = new THREE.MeshBasicMaterial({ color: 0x1b2320 }), g = new THREE.Group(), A = new THREE.Vector3(...a), B = new THREE.Vector3(...b);
+  const L = A.distanceTo(B), bar = new THREE.Mesh(new THREE.BoxGeometry(w, L, w), m);
+  bar.quaternion.setFromUnitVectors(UP, B.clone().sub(A).normalize()); bar.position.copy(A).add(B).multiplyScalar(0.5); g.add(bar);
+  const perp = Math.abs(B.y - A.y) > Math.abs(B.x - A.x) ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+  for (const P of [A, B]) { const t = new THREE.Mesh(new THREE.BoxGeometry(w, w, w), m); t.scale.setComponent(perp.x ? 0 : 1, 5); t.position.copy(P); g.add(t); }
+  v.root.add(g); v.scaleBarObj = g;
+}
+const STAGES = [['cell', 'Cell', 'The organelles of a fusiform cell, 22 µm long.'], ['plastid', 'Chloroplast', 'Four membranes, thylakoid bands and the pyrenoid in section.'], ['pyr', 'Pyrenoid', 'Rubisco, PYCO1, the PyShell and the PPT at molecular scale.']];
+const STAGE_COL = { cell: '#b9892a', plastid: '#9a7cc4', pyr: '#6585b3' };
+const REFS = [
+  'Borowitzka & Volcani (1978) J Phycol 14:10 — morphotype ultrastructure',
+  'Nakajima, Tanaka & Matsuda (2013) PNAS 110:1767 — SLC4 HCO₃⁻ uptake',
+  'Bailleul et al. (2015) Nature 524:366 — plastid–mitochondria coupling',
+  'Tanaka et al. (2015) Protist 166:506 — cell division',
+  'Flori et al. (2016) Protist 167:254 — periplastidial compartment',
+  'Kikutani et al. (2016) PNAS 113:9828 — θ-CA in the PPT lumen',
+  'Loganathan, Tsai & Mueller-Cajar (2016) PNAS 113:14019 — red-type activase',
+  'Young et al. (2016) J Exp Bot 67:3445 — diatom Rubisco kinetics',
+  'Flori et al. (2017) Nat Commun 8:15885 — thylakoid architecture',
+  'Uwizeye et al. (2021) Nat Commun 12:1049 — 3D cell volumes',
+  'Oh et al. (2023) PNAS 120:e2304833120 — PYCO1',
+  'Shimakawa et al. (2023) Plant Physiol 193:2298 — CO₂-evolving machinery',
+  'Nigishi et al. (2024) Plant Physiol, doi:10.1093/plphys/kiae137 — bestrophins',
+  'Shimakawa et al. (2024) Cell 187:5919 — PyShell',
+];
+const VIEWS = {
+  cell: new View({
+    id: 'cell', hash: 'cell', seed: 1055, defs: CELL_DEFS, groups: ['surface', 'plastid', 'host'], indexTitle: 'Cell parts',
+    foot: 'A fusiform cell built from published dimensions and volumes, not traced from one micrograph. Organelle shapes are simplified.',
+    h1: '<i>Phaeodactylum tricornutum</i>', sub: ['fusiform cell', '22 µm tip to tip', 'front half cut away'],
+    size: 24, near: 0.05, far: 600, flyDist: 8, home: [0.3, 0.5, 1], side: [0.3, 0.45, 1],
+    planeDefs: [{ n: [0, 0, -1], c: 0, cut: true }],
+    tour: ['wall', 'pm', 'cer', 'nucleus', 'plastid', 'pyr', 'mito', 'golgi', 'vac', 'lipid'],
+    teardown: ['wall', 'pm', 'cer', 'plastid', 'mito', 'golgi', 'lipid', 'vac', 'nucleus'],
+    extra(v) { scaleBar(v, [-2.5, -2.85, 0], [2.5, -2.85, 0], 0.06); v.scaleAnchor = new THREE.Vector3(2.75, -2.85, 0); v.scaleText = '5 µm'; v.flux = cellFlux(v); },
+    OV: {
+      eyebrow: 'Model diatom · fusiform cell', h2: 'A diatom built round one chloroplast',
+      paras: ['Phaeodactylum tricornutum is the most widely used model diatom: a marine pennate diatom with a sequenced genome and routine genetic tools. Most laboratory strains grow as spindle-shaped fusiform cells. The central body holds the nucleus and a single large chloroplast; the thin arms are filled mainly by vacuoles.', 'Along the middle of the chloroplast runs the pyrenoid, a rod of densely packed Rubisco where most of the cell’s CO₂ is fixed. Diatoms fix up to a fifth of the world’s CO₂, much of it in pyrenoids like this one.'],
+      facts: [['Length', '22 µm here; 13–25 µm in strain CCMP633'], ['Width', 'about 4 µm across the central body (3–5 µm)'], ['Chloroplast', 'one, about a third of the cell volume'], ['Pyrenoid', 'a rod about 6 µm long and under 1 µm wide']],
+      look: 'Use the Scale buttons, or the links on the chloroplast and pyrenoid cards, to zoom from the cell to the chloroplast in section and then into the pyrenoid.',
+    },
+  }),
+  plastid: new View({
+    id: 'plastid', hash: 'chloroplast', seed: 2561, defs: PLASTID_DEFS, groups: ['membranes', 'thylakoids', 'pyrenoid'], indexTitle: 'Chloroplast parts',
+    foot: 'A block from the middle of the chloroplast, cut lengthwise through the pyrenoid. Spacings follow electron micrographs approximately; membranes are drawn slightly thicker than they are.',
+    h1: 'The chloroplast in section', sub: ['four membranes', 'thylakoids in bands of three', 'block 3.6 × 1.25 × 1.1 µm'],
+    size: 40, near: 0.03, far: 900, flyDist: 16, home: [0.6, 0.32, 1], side: [0.25, 0.55, 1],
+    planeDefs: [{ n: [-1, 0, 0], c: 18 }, { n: [1, 0, 0], c: 18 }, { n: [0, 0, -1], c: 0 }], box: [[-18, -6.2, -14], [18, 6.2, 0]],
+    tour: ['cerm', 'ppm', 'ppc', 'env', 'gl', 'stroma', 'thy', 'lumen', 'matrix', 'shell', 'ppt'],
+    teardown: ['cerm', 'ppm', 'ppc', 'env', 'gl', 'thy', 'shell', 'matrix'],
+    extra(v) { scaleBar(v, [-18, -6.2, 0.3], [-13, -6.2, 0.3], 0.07); v.scaleAnchor = new THREE.Vector3(-12.7, -6.2, 0.3); v.scaleText = '500 nm'; v.flux = plastidFlux(v); },
+    OV: {
+      eyebrow: 'Chloroplast · lengthwise section', h2: 'Four membranes, bands of three, a rod of Rubisco',
+      paras: ['This block is cut from the middle of the chloroplast, along the length of the pyrenoid. Its cut faces show what an electron micrograph would: four membranes round the outside, the girdle lamella just inside them, loose bands of three thylakoids, and in the centre the pyrenoid, its Rubisco matrix split by a pair of thylakoids that run its whole length.', 'On the left, the pyrenoid ends. There the two pyrenoid-penetrating thylakoids leave through a gap in the PyShell and join a band of ordinary thylakoids.'],
+      facts: [['Block', '3.6 µm long, half the chloroplast’s width, 1.1 µm thick'], ['Membranes', 'four: cERM, PPM, oEM, iEM'], ['Thylakoids', 'bands of three; no grana'], ['Pyrenoid', 'drawn 0.7 µm wide and 0.26 µm thick']],
+      look: 'Turn on Carbon route to follow HCO₃⁻ from the cytosol to Rubisco, then switch the Light off to see why the last step depends on photosynthesis. Photosystems shows where PSI and PSII sit in each band.',
+    },
+  }),
+  pyr: new View({
+    id: 'pyr', hash: 'pyrenoid', seed: 7181, defs: PYR_DEFS, groups: ['boundary', 'matrix', 'ppt'], indexTitle: 'Pyrenoid parts',
+    foot: 'Schematic at molecular scale. Protein shapes are simplified, and the packing of Rubisco, the PYCO1 network and the PyShell lattice spacing are illustrative, not measured.',
+    h1: 'Inside the pyrenoid', sub: ['Rubisco matrix', 'PyShell', 'pyrenoid-penetrating thylakoids', 'block 120 × 72 × 180 nm'],
+    size: 200, near: 0.5, far: 8000, flyDist: 120, home: [0.45, 0.28, 1], side: [0.55, 0.32, 1],
+    tour: ['shellP', 'rubisco', 'pyco', 'mem', 'lumenP', 'tca', 'bst3'],
+    teardown: ['shellP', 'rubisco', 'pyco', 'bst3', 'mem'],
+    extra(v) { scaleBar(v, [64, -26, Q.Z], [64, -6, Q.Z], 0.5); v.scaleAnchor = new THREE.Vector3(66, -16, Q.Z); v.scaleText = '20 nm'; v.flux = pyrFlux(v); },
+    OV: {
+      eyebrow: 'Pyrenoid · molecular scale (schematic)', h2: 'Where HCO₃⁻ becomes CO₂, next to Rubisco',
+      paras: ['A block from the middle of the pyrenoid, reaching from the pair of pyrenoid-penetrating thylakoids (PPT) at the bottom up to the PyShell at the top. Rubisco holoenzymes, cross-linked by the linker protein PYCO1, fill the matrix. In the acidic lumen of the PPT, θ-carbonic anhydrase turns HCO₃⁻ into CO₂, which diffuses straight into the Rubisco.'],
+      facts: () => [['Rubisco', `${RUB.length} holoenzymes in this block`], ['PYCO1', `${VIEWS.pyr.parts.pyco ? VIEWS.pyr.parts.pyco.nChains : '–'} cross-links drawn`], ['Lumen', 'drawn 14 nm wide'], ['Block', '120 × 72 nm, 180 nm tall']],
+      look: 'Turn on Carbon route to watch HCO₃⁻ (blue) become CO₂ (black) at the θ-CA and get fixed by Rubisco (flash). Switch the Light off and the conversion almost stops.',
+    },
+  }),
+};
+const VIEW_BY_HASH = Object.fromEntries(Object.values(VIEWS).map(v => [v.hash, v.id]));
+const TOUR = Object.values(VIEWS).flatMap(v => v.tour.map(id => [v.id, id]));
+const V = () => VIEWS[state.view];
+
+/* ------------------------------------------------------------------ */
+/* Per-frame part state                                                */
+/* ------------------------------------------------------------------ */
+let tweenE = null, camTween = null, dirty = true;
+function partOpacity(p) {
+  const v = p.view;
+  if (p.feature) { let o = v.E < 0.04 && !(p.dep || []).some(id => v.parts[id].removed) ? 1 : 0; if (state.isolate && state.sel && state.sel !== p) o *= 0.1; return o; }
+  let o = 1 - p.out;
+  if (state.isolate && state.sel && state.sel !== p) o *= 0.1;
+  return o;
+}
+function overlayOn(kind) { return kind === 'ps' ? state.ps : kind === 'flux' ? state.flux : true; }
+function updateParts() {
+  const v = V();
+  for (const p of v.order) {
+    p.group.position.copy(p.vec).multiplyScalar(v.E).addScaledVector(p.fly, p.out * v.flyDist);
+    const g = p.group.position;
+    for (const { pd, pl } of p.planes) pl.constant = pd.cut && !state.cut ? 1e7 : pd.c - (pd.n[0] * g.x + pd.n[1] * g.y + pd.n[2] * g.z);
+    if (p.feature) continue;
+    const o = partOpacity(p);
+    p.group.visible = o > 0.01;
+    for (const m of p.mats) {
+      const base = m.userData.base, oo = base * o, tr = oo < 0.995;
+      if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; }
+      m.opacity = oo; m.depthWrite = base >= 1 && o > 0.6;
+    }
+    for (const ov of p.over) ov.obj.visible = overlayOn(ov.kind) && o > 0.5;
+  }
+  if (v.scaleBarObj) v.scaleBarObj.visible = v.E < 0.03;
+}
+function applyHighlight() {
+  for (const p of V().order) {
+    const h = p === state.sel ? 0.42 : p === state.hover ? 0.18 : 0;
+    for (const m of p.mats) m.emissive.copy(ACCENT).multiplyScalar(h);
+  }
+}
+function applyColors() {
+  for (const v of Object.values(VIEWS)) if (v.built) for (const p of v.order) for (const m of p.mats) {
+    m.color.set(col(m.userData.key));
+    if (m.userData.uInner) m.userData.uInner.value.set(col(m.userData.innerKey));
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Camera helpers                                                      */
+/* ------------------------------------------------------------------ */
+function bounds(E) {
+  const b = new THREE.Box3();
+  for (const p of V().order) { if (p.removed || p.feature) continue; b.union(p.box0.clone().translate(p.vec.clone().multiplyScalar(E))); }
+  return b;
+}
+function flyTo(center, dist, dur = 900, dir = null) {
+  const d0 = camera.position.clone().sub(controls.target).normalize();
+  if (reduceMotion) dur = 1;
+  camTween = { t0: performance.now(), dur, fromT: controls.target.clone(), toT: center.clone(), fromD: camera.position.distanceTo(controls.target), toD: dist, d0, d1: dir ? dir.clone() : d0 };
+  dirty = true;
+}
+function fitDistance(b, dir, margin) {
+  const c = b.getCenter(new THREE.Vector3()), fwd = dir.clone().negate();
+  const right = new THREE.Vector3().crossVectors(fwd, camera.up).normalize(), up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+  const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), th = tv * camera.aspect;
+  let d = 0;
+  for (let i = 0; i < 8; i++) {
+    const w = new THREE.Vector3(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).sub(c);
+    const z = w.dot(dir);
+    d = Math.max(d, z + Math.abs(w.dot(right)) * margin / th, z + Math.abs(w.dot(up)) * margin / tv);
+  }
+  return { c, d };
+}
+const curDir = () => camera.position.clone().sub(controls.target).normalize();
+function fitView(E = V().E, animate = true, dir = null) {
+  const b = bounds(E); if (b.isEmpty()) return;
+  const dd = dir || curDir(), { c, d } = fitDistance(b, dd, 1.08);
+  if (animate) flyTo(c, d, 900, dd); else { camTween = null; controls.target.copy(c); camera.position.copy(c).addScaledVector(dd, d); }
+}
+function focusPart(p) {
+  const b = p.fbox.clone().translate(p.group.position), dir = p.focusDir || curDir();
+  const { c, d } = fitDistance(b, dir, p.focusBox ? 1.4 : 1.22);
+  flyTo(c, Math.max(V().size * 0.12, d), 900, dir);
+}
+
+/* ------------------------------------------------------------------ */
+/* Picking                                                             */
+/* ------------------------------------------------------------------ */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(x, y) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const objs = V().order.filter(p => !p.feature && p.group.visible && partOpacity(p) > 0.3).map(p => p.group);
+  for (const h of ray.intersectObjects(objs, true)) {
+    const m = h.object; if (!m.isMesh || !m.userData.part || !m.visible) continue;
+    const p = m.userData.part;
+    if (m.material.clippingPlanes && m.material.clippingPlanes.some(pl => pl.distanceToPoint(h.point) < -1e-4)) continue;
+    if (m.material.opacity < 0.5 && m.material.userData.base < 0.5) {
+      /* Let clicks pass through faint shells (the wall) unless nothing else is behind them. */
+      if (!pick.deep) { pick.deep = true; const inner = ray.intersectObjects(objs, true).find(k => k.object.userData.part && k.object.userData.part !== p && k.object.material.opacity >= 0.5 && !(k.object.material.clippingPlanes || []).some(pl => pl.distanceToPoint(k.point) < -1e-4)); pick.deep = false; if (inner) return inner.object.userData.part; }
+    }
+    return p;
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* UI: labels, list, card, legend                                      */
+/* ------------------------------------------------------------------ */
+const labelsEl = $('labels'), listEl = $('partList'), cardEl = $('card'), legendEl = $('legend'), tipEl = $('tip'), toastEl = $('toast'), leadersEl = $('leaders'), scaleLbl = $('scaleLbl');
+const nameOf = p => p.label || p.title;
+function makeLabels(v) {
+  for (const p of v.order) {
+    const b = document.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.className = 'lbl' + (p.feature ? ' feat' : ''); b.textContent = nameOf(p);
+    b.addEventListener('click', () => select(p));
+    b.addEventListener('pointerenter', () => { state.hover = p; applyHighlight(); dirty = true; });
+    b.addEventListener('pointerleave', () => { if (state.hover === p) { state.hover = null; applyHighlight(); dirty = true; } });
+    p.lbl = b; labelsEl.appendChild(b);
+  }
+  measureLabels(v);
+}
+function measureLabels(v) { for (const p of v.order) { const s = p.lbl.style.display; p.lbl.style.display = 'block'; p.lbl.style.visibility = 'hidden'; p.lbl.style.transform = 'translate(-9999px,0)'; p.lw = p.lbl.offsetWidth; p.lh = p.lbl.offsetHeight; p.lbl.style.display = s; p.lbl.style.visibility = ''; } }
+if (document.fonts) document.fonts.ready.then(() => { for (const v of Object.values(VIEWS)) if (v.built) measureLabels(v); obstaclesDirty = true; dirty = true; });
+const vTmp = new THREE.Vector3(), cTmp = new THREE.Vector3();
+let obstacles = [], obstaclesDirty = true;
+function updateLabels() {
+  const v = V(), W = viewEl.clientWidth, Hh = viewEl.clientHeight;
+  scaleLbl.hidden = !(v.scaleBarObj && v.scaleBarObj.visible);
+  if (!scaleLbl.hidden) {
+    vTmp.copy(v.scaleAnchor); v.root.localToWorld(vTmp); vTmp.project(camera);
+    scaleLbl.style.transform = `translate(${((vTmp.x + 1) / 2 * W + 4).toFixed(1)}px,${((1 - vTmp.y) / 2 * Hh - 6).toFixed(1)}px)`;
+  }
+  const only = state.labels ? null : state.sel;
+  labelsEl.hidden = leadersEl.hidden = !state.labels && !only;
+  if (!state.labels && !only) return;
+  cTmp.copy(controls.target).project(camera); const cy = (1 - cTmp.y) / 2 * Hh;
+  const items = [];
+  for (const p of v.order) {
+    if ((only && p !== only) || partOpacity(p) < 0.35) { p.lbl.style.display = 'none'; continue; }
+    vTmp.copy(p.anchor); p.group.localToWorld(vTmp); vTmp.project(camera);
+    if (vTmp.z > 1 || Math.abs(vTmp.x) > 1.02 || Math.abs(vTmp.y) > 1.02) { p.lbl.style.display = 'none'; continue; }
+    items.push({ p, x: (vTmp.x + 1) / 2 * W, y: (1 - vTmp.y) / 2 * Hh });
+  }
+  items.sort((a, b) => (b.p === state.sel) - (a.p === state.sel) || Math.abs(b.y - cy) - Math.abs(a.y - cy));
+  if (obstaclesDirty) {
+    const vr = viewEl.getBoundingClientRect(); obstacles = [];
+    for (const el of [legendEl, document.querySelector('.plate-title'), $('hint')]) {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height) obstacles.push({ x0: r.left - vr.left, x1: r.right - vr.left, y0: r.top - vr.top, y1: r.bottom - vr.top });
+    }
+    obstaclesDirty = false;
+  }
+  const placed = obstacles.slice(), gap = 3;
+  if (!scaleLbl.hidden) { const r = scaleLbl.getBoundingClientRect(), vr = viewEl.getBoundingClientRect(); placed.push({ x0: r.left - vr.left - 30, x1: r.right - vr.left, y0: r.top - vr.top, y1: r.bottom - vr.top }); }
+  let ln = '', dt = '', sl = '', sd = '';
+  for (const it of items) {
+    const { p, x, y } = it, w = p.lw || 80, h = p.lh || 20, pref = y < cy ? -1 : 1;
+    let best = null;
+    for (let k = 0; k < 16 && !best; k++) for (const dir of [pref, -pref]) {
+      const L = 14 + k * (h + gap), x0 = clamp(x - w / 2, 4, W - w - 4), y0 = dir < 0 ? y - L - h : y + L;
+      if (y0 < 4 || y0 + h > Hh - 4) continue;
+      if (placed.some(r => x0 < r.x1 + gap && x0 + w > r.x0 - gap && y0 < r.y1 + gap && y0 + h > r.y0 - gap)) continue;
+      best = { x0, y0, dir }; break;
+    }
+    if (!best) best = { x0: clamp(x - w / 2, 4, W - w - 4), y0: pref < 0 ? y - 14 - h : y + 14, dir: pref };
+    placed.push({ x0: best.x0, x1: best.x0 + w, y0: best.y0, y1: best.y0 + h });
+    p.lbl.style.display = 'block';
+    p.lbl.style.transform = `translate(${best.x0.toFixed(1)}px,${best.y0.toFixed(1)}px)`;
+    p.lbl.classList.toggle('sel', p === state.sel);
+    const ex = clamp(x, best.x0 + 4, best.x0 + w - 4), ey = best.dir < 0 ? best.y0 + h : best.y0;
+    const seg = `M${x.toFixed(1)} ${y.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}`;
+    const dot = `M${(x - 2.5).toFixed(1)} ${y.toFixed(1)}a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0`;
+    if (p === state.sel) { sl += seg; sd += dot; } else { ln += seg; dt += dot; }
+  }
+  $('lnPath').setAttribute('d', ln); $('dtPath').setAttribute('d', dt);
+  $('slPath').setAttribute('d', sl); $('sdPath').setAttribute('d', sd);
+}
+const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3 3.9M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+function renderList() {
+  const v = V(); let html = '';
+  $('indexTitle').textContent = v.indexTitle; $('indexFoot').textContent = v.foot;
+  for (const sid of v.groups) {
+    const s = SYS[sid], ps = v.tour.map(id => v.parts[id]).filter(p => p.sys === sid);
+    if (!ps.length) continue;
+    html += `<div class="grp"><h3><span class="sw" style="--c:${s.col}"></span>${s.en}</h3>`;
+    for (const p of ps) {
+      const eye = p.feature ? '<span class="eye-spacer"></span>' : `<button class="eye" data-eye="${p.id}" aria-label="${p.removed ? 'Put back' : 'Remove'} ${p.title}" title="${p.removed ? 'Put back' : 'Remove'}">${p.removed ? EYE_OFF : EYE}</button>`;
+      html += `<div class="row${p === state.sel ? ' sel' : ''}${p.removed ? ' off' : ''}${p.feature ? ' feat' : ''}"><button class="name" data-sel="${p.id}">${p.title}</button>${eye}</div>`;
+    }
+    html += '</div>';
+  }
+  listEl.innerHTML = html;
+}
+listEl.addEventListener('click', e => {
+  const s = e.target.closest('[data-sel]'), w = e.target.closest('[data-eye]');
+  if (s) { select(V().parts[s.dataset.sel], { focus: true }); document.body.classList.remove('parts-open'); }
+  if (w) { const p = V().parts[w.dataset.eye]; setRemoved(p, !p.removed); }
+});
+const val = f => typeof f === 'function' ? f() : f;
+function renderCard() {
+  const v = V(), p = state.sel;
+  if (!p) {
+    const OV = v.OV;
+    cardEl.innerHTML = `<div class="card-in">
+      <p class="eyebrow">${OV.eyebrow}</p>
+      <h2>${OV.h2}</h2>
+      ${OV.paras.map(t => `<p>${t}</p>`).join('')}
+      <dl class="facts">${val(OV.facts).map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join('')}</dl>
+      <ol class="stages">${STAGES.map(([id, t, d]) => `<li style="--c:${STAGE_COL[id]}" class="${id === v.id ? 'cur' : ''}"><button type="button" data-go="${id}"><b>${t}</b></button><span>${d}</span></li>`).join('')}</ol>
+      <p class="note">${OV.look}</p>
+      <button class="primary" id="startTour">Start the tour here ▸</button>
+      <p class="hint">Tap any part to see what it does. Drag to turn the model, pinch or scroll to zoom. Explode and Take apart separate the parts.</p>
+      <details class="refs"><summary>Main sources</summary><ul>${REFS.map(r => `<li>${r}</li>`).join('')}</ul></details>
+    </div>`;
+    $('startTour').addEventListener('click', () => select(v.parts[v.tour[0]], { focus: true }));
+    cardEl.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => switchView(b.dataset.go)));
+    return;
+  }
+  const i = TOUR.findIndex(([vi, id]) => vi === v.id && id === p.id), s = SYS[p.sys];
+  cardEl.innerHTML = `<div class="card-in">
+    <div class="card-top"><span class="pill"><span class="sw" style="--c:${s.col}"></span>${s.en}</span><button class="x" id="cClose" aria-label="Close and show the overview">×</button></div>
+    <h2>${p.title}</h2>
+    <dl class="facts">${val(p.facts).map(([k, x]) => `<dt>${k}</dt><dd>${x}</dd>`).join('')}</dl>
+    <div><h3>What it does</h3><p>${p.what}</p></div>
+    <div class="key"><h3>Key idea</h3><p>${p.key}</p></div>
+    ${p.note ? `<p class="note"><strong>${p.note[0]}</strong> ${p.note[1]}</p>` : ''}
+    ${p.link ? `<button class="golink" id="cLink">${p.link[2]}</button>` : ''}
+    <div class="actions">
+      <button class="tb" id="cFocus" ${p.removed ? 'disabled' : ''}>Zoom to it</button>
+      ${p.feature ? '' : `<button class="tb" id="cIso" aria-pressed="${state.isolate}" ${p.removed ? 'disabled' : ''}>Isolate</button><button class="tb" id="cRem">${p.removed ? 'Put back' : 'Remove'}</button>`}
+    </div>
+    <div class="tour">
+      <button class="tb" id="cPrev" ${i <= 0 ? 'disabled' : ''}>◂ Previous</button>
+      <span>Outside in<br>${i + 1} of ${TOUR.length}</span>
+      <button class="tb" id="cNext" ${i >= TOUR.length - 1 ? 'disabled' : ''}>Next ▸</button>
+    </div>
+  </div>`;
+  $('cClose').addEventListener('click', () => select(null));
+  $('cFocus').addEventListener('click', () => focusPart(p));
+  if (p.link) $('cLink').addEventListener('click', () => { const [vid, pid] = p.link; switchView(vid); if (pid) select(VIEWS[vid].parts[pid], { focus: true }); });
+  if (!p.feature) {
+    $('cIso').addEventListener('click', () => { state.isolate = !state.isolate; renderCard(); dirty = true; });
+    $('cRem').addEventListener('click', () => setRemoved(p, !p.removed));
+  }
+  $('cPrev').addEventListener('click', () => step(-1));
+  $('cNext').addEventListener('click', () => step(1));
+}
+function step(d) {
+  const v = V(), i = state.sel ? TOUR.findIndex(([vi, id]) => vi === v.id && id === state.sel.id) : -1, n = clamp(i + d, 0, TOUR.length - 1);
+  if (n === i) return;
+  const [vid, pid] = TOUR[n];
+  if (vid !== v.id) switchView(vid);
+  select(VIEWS[vid].parts[pid], { focus: true });
+}
+const LEG = {
+  cell: [['dot', FLUX_COL.hco3, 'HCO₃⁻'], ['dot', FLUX_COL.co2, 'CO₂'], ['dot', FLUX_COL.fix, 'fixed by Rubisco'], ['sq', '#2f6fd6', 'SLC4 transporter']],
+  plastid: [['dot', FLUX_COL.hco3, 'HCO₃⁻'], ['dot', FLUX_COL.co2, 'CO₂'], ['dot', FLUX_COL.h, 'H⁺ (light)'], ['sq', '#2563c9', 'bestrophin'], ['dot', '#f1c232', 'θ-CA']],
+  pyr: [['dot', FLUX_COL.hco3, 'HCO₃⁻'], ['dot', FLUX_COL.co2, 'CO₂'], ['dot', FLUX_COL.h, 'H⁺ (light)'], ['dot', FLUX_COL.fix, 'fixed']],
+};
+const FLUX_CAP = {
+  cell: 'SLC4 transporters take up HCO₃⁻; it is carried to the pyrenoid and released there as CO₂. The route across the four chloroplast membranes is simplified.',
+  plastid: 'Drawn on the cut face. HCO₃⁻ crosses the four membranes, enters a thylakoid through bestrophins, diffuses along the lumen into the PPT, and θ-CA turns it into CO₂ beside Rubisco.',
+  pyr: 'HCO₃⁻ diffuses along the PPT lumen. Near θ-CA, in acid, it becomes CO₂, which crosses the membrane into the Rubisco matrix.',
+};
+let lastLegend = null;
+function renderLegend() {
+  const v = V(); let html = '';
+  if (state.color === 'origin') html += `<div class="lg"><b>Origin and encoding</b><span class="it"><span class="sq" style="--c:#7f92cf"></span>host / nucleus-encoded</span><span class="it"><span class="sq" style="--c:#c0528a"></span>red-algal endosymbiont</span><span class="it"><span class="sq" style="--c:#5aa05a"></span>plastid: cyanobacterial ancestry / plastid-encoded</span><span class="it"><span class="sq" style="--c:#e08a3c"></span>mitochondrion</span><span class="cap">Membranes are coloured by where they came from; proteins by the genome that encodes them.</span></div>`;
+  else if (state.color === 'tem') html += `<div class="lg"><b>Electron density</b><span class="cap">Greys approximate a stained thin section: darker means more electron-dense. Membranes and the pyrenoid are dark; vacuoles are pale.</span></div>`;
+  if (state.ps && v.id === 'plastid') html += `<div class="lg"><b>Photosystems</b><span class="it"><span class="dot" style="--c:${PAL.illus.psi}"></span>PSI, peripheral membranes</span><span class="it"><span class="dot" style="--c:${PAL.illus.psii}"></span>PSII, core membranes</span><span class="cap">Shown on the cut face, after Flori et al. (2017).</span></div>`;
+  if (state.flux) {
+    const go = v.E < 0.02;
+    html += `<div class="lg"><b>Carbon route${v.id !== 'cell' ? (state.light ? ' · light' : ' · dark') : ''}</b>${LEG[v.id].map(([k, c, t]) => `<span class="it"><span class="${k}" style="--c:${c}"></span>${t}</span>`).join('')}`
+      + (go ? (v.flux.legend() || '') + `<span class="cap">${FLUX_CAP[v.id]}</span>` : '<span class="cap">Put the model back together to see the route.</span>') + '</div>';
+  }
+  if (lastLegend !== html) { lastLegend = html; legendEl.innerHTML = html; obstaclesDirty = true; }
+}
+let toastT = 0;
+function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2200); }
+
+function select(p, o = {}) {
+  if (p && p.view.id !== state.view) switchView(p.view.id);
+  if (!p) state.isolate = false;
+  state.sel = p;
+  applyHighlight(); renderCard(); renderList(); dirty = true;
+  if (p && o.focus && !p.removed) {
+    const v = V();
+    if (p.feature && v.E > 0.02) { tweenE = { from: v.E, to: 0, t0: performance.now(), dur: reduceMotion ? 1 : 900 }; syncExplode(); }
+    focusPart(p);
+  }
+}
+function setRemoved(p, on) {
+  if (p.feature) return;
+  p.removed = on;
+  if (on && state.isolate && state.sel === p) state.isolate = false;
+  renderList(); updateCount(); if (state.sel === p) renderCard(); dirty = true;
+}
+function updateCount() {
+  const v = V(), td = v.teardown.map(id => v.parts[id]), n = td.filter(p => p.removed).length;
+  $('tdCount').textContent = `${n}/${td.length}`;
+  $('bBack').disabled = !v.removable.some(p => p.removed); $('bNext').disabled = n === td.length;
+}
+
+/* ------------------------------------------------------------------ */
+/* Switching scale                                                     */
+/* ------------------------------------------------------------------ */
+function switchView(id, o = {}) {
+  const v = VIEWS[id]; if (!v) return;
+  const first = !v.built;
+  if (first) { v.build(); makeLabels(v); }
+  if (state.view === id && !first) return;
+  if (state.view) for (const p of V().order) { p.lbl.style.display = 'none'; }
+  for (const w of Object.values(VIEWS)) w.root.visible = w === v;
+  state.view = id; state.sel = null; state.hover = null; state.isolate = false; tweenE = null;
+  camera.near = v.near; camera.far = v.far; camera.updateProjectionMatrix();
+  controls.minDistance = v.size * 0.04; controls.maxDistance = v.size * 7;
+  $('plateH1').innerHTML = v.h1; $('plateSub').innerHTML = v.sub.map(s => `<span>${s}</span>`).join('');
+  scaleLbl.textContent = v.scaleText;
+  document.querySelectorAll('#viewSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === id)));
+  document.querySelectorAll('#tools [data-views]').forEach(b => { b.hidden = !b.dataset.views.split(' ').includes(id); });
+  document.body.classList.toggle('dark', !state.light && id !== 'cell');
+  applyLight();
+  renderList(); renderCard(); updateCount(); syncExplode(); applyColors(); applyHighlight(); updateParts(); renderLegend();
+  if (!o.keepCam) { camera.position.copy(v.homeDir).multiplyScalar(v.size * 3); fitView(v.E, false, v.homeDir); controls.update(); }
+  obstaclesDirty = true; dirty = true; userMoved = false;
+  if (location.hash.slice(1) !== v.hash) { try { history.replaceState(null, '', '#' + v.hash); } catch (e) { /* the hash is a convenience */ } }
+}
+function applyLight() {
+  const dark = !state.light && state.view !== 'cell';
+  keyLight.intensity = dark ? 0.9 : 2.0; hemi.intensity = dark ? 0.7 : 0.95;
+  document.body.classList.toggle('dark', dark);
+}
+
+/* ------------------------------------------------------------------ */
+/* Controls wiring                                                     */
+/* ------------------------------------------------------------------ */
+const toggles = { flux: 'tFlux', ps: 'tPS', light: 'tLight', cut: 'tCut', labels: 'tLbl' };
+function setToggle(k, on) {
+  state[k] = on; $(toggles[k]).setAttribute('aria-pressed', String(on));
+  if (k === 'light') applyLight();
+  renderLegend(); dirty = true;
+}
+for (const [k, id] of Object.entries(toggles)) { $(id).setAttribute('aria-pressed', String(state[k])); $(id).addEventListener('click', () => setToggle(k, !state[k])); }
+document.querySelectorAll('#viewSeg button').forEach(b => b.addEventListener('click', () => switchView(b.dataset.v)));
+const slider = $('explode');
+slider.addEventListener('input', () => { tweenE = null; V().E = slider.value / 100; syncExplode(); dirty = true; });
+function syncExplode() { const v = V(); $('bExplode').textContent = (tweenE ? tweenE.to : v.E) > 0.5 ? 'Assemble' : 'Explode'; slider.value = Math.round(v.E * 100); renderLegend(); }
+$('bExplode').addEventListener('click', () => {
+  const v = V(), to = (tweenE ? tweenE.to : v.E) > 0.5 ? 0 : 1;
+  tweenE = { from: v.E, to, t0: performance.now(), dur: reduceMotion ? 1 : 1400 };
+  fitView(to, true, to > 0.5 ? v.sideDir : v.homeDir); syncExplode();
+});
+$('bNext').addEventListener('click', () => {
+  const v = V(), p = v.teardown.map(id => v.parts[id]).find(q => !q.removed); if (!p) return;
+  setRemoved(p, true); select(p); toast(`Removed: ${p.title}`);
+});
+$('bBack').addEventListener('click', () => {
+  const v = V(), list = v.teardown.map(id => v.parts[id]).filter(q => q.removed);
+  const p = list.length ? list[list.length - 1] : v.removable.find(q => q.removed); if (!p) return;
+  setRemoved(p, false); select(p); toast(`Put back: ${p.title}`);
+});
+$('bShowAll').addEventListener('click', () => { for (const p of V().order) p.removed = false; state.isolate = false; renderList(); renderCard(); updateCount(); dirty = true; });
+$('colorMode').addEventListener('change', e => { state.color = e.target.value; applyColors(); renderLegend(); dirty = true; });
+$('bFit').addEventListener('click', () => fitView());
+$('bParts').addEventListener('click', () => document.body.classList.toggle('parts-open'));
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input,select')) return;
+  if (e.key === 'Escape') { if (document.body.classList.contains('parts-open')) document.body.classList.remove('parts-open'); else select(null); }
+  if (e.key === 'ArrowRight' && state.sel) step(1);
+  if (e.key === 'ArrowLeft' && state.sel) step(-1);
+});
+window.addEventListener('hashchange', () => { const id = VIEW_BY_HASH[location.hash.slice(1)]; if (id && id !== state.view) switchView(id); });
+
+let down = null, hoverT = 0, userMoved = false;
+canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; camTween = null; userMoved = true; document.body.classList.remove('parts-open'); });
+canvas.addEventListener('wheel', () => { userMoved = true; }, { passive: true });
+canvas.addEventListener('pointerup', e => {
+  if (!down) return;
+  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null;
+  if (moved > 6) return;
+  const p = pick(e.clientX, e.clientY);
+  if (p) select(p); else if (state.sel) select(null);
+});
+canvas.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || e.buttons) { tipEl.hidden = true; return; }
+  const now = performance.now(); if (now - hoverT < 70) return; hoverT = now;
+  const p = pick(e.clientX, e.clientY);
+  if (p !== state.hover) { state.hover = p; applyHighlight(); dirty = true; }
+  canvas.style.cursor = p ? 'pointer' : '';
+  if (p) {
+    const r = viewEl.getBoundingClientRect();
+    tipEl.textContent = p.title; tipEl.hidden = false;
+    tipEl.style.transform = `translate(${e.clientX - r.left + 14}px,${e.clientY - r.top + 12}px)`;
+  } else tipEl.hidden = true;
+});
+canvas.addEventListener('pointerleave', () => { tipEl.hidden = true; if (state.hover) { state.hover = null; applyHighlight(); dirty = true; } });
+controls.addEventListener('change', () => { dirty = true; });
+
+/* ------------------------------------------------------------------ */
+/* Resize + loop                                                       */
+/* ------------------------------------------------------------------ */
+function resize() {
+  const w = viewEl.clientWidth, h = viewEl.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = true; obstaclesDirty = true;
+}
+resize();
+switchView(VIEW_BY_HASH[location.hash.slice(1)] || 'cell');
+new ResizeObserver(() => { resize(); if (!userMoved && !camTween) fitView(V().E, false, curDir()); }).observe(viewEl);
+
+let last = performance.now(), ctrT = 0, frozen = false;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (frozen) return;
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const v = V();
+  let active = false;
+  if (tweenE) {
+    const k = clamp((now - tweenE.t0) / tweenE.dur, 0, 1);
+    v.E = lerp(tweenE.from, tweenE.to, smooth(k));
+    if (k >= 1) tweenE = null;
+    syncExplode(); active = true;
+  }
+  for (const p of v.removable) {
+    const target = p.removed ? 1 : 0;
+    if (p.out !== target) { p.out = clamp(p.out + Math.sign(target - p.out) * dt * (reduceMotion ? 50 : 1.6), 0, 1); active = true; }
+  }
+  const showFlux = state.flux && v.E < 0.02;
+  for (const c of v.flux.clouds) c.pts.visible = showFlux;
+  if (showFlux) {
+    v.flux.step(dt); active = true;
+    ctrT += dt; if (ctrT > 0.4) { ctrT = 0; if (v.flux.counters) v.flux.counters(); }
+  }
+  if (camTween) {
+    const k = smooth(clamp((now - camTween.t0) / camTween.dur, 0, 1));
+    controls.target.lerpVectors(camTween.fromT, camTween.toT, k);
+    camera.position.copy(controls.target).addScaledVector(camTween.d0.clone().lerp(camTween.d1, k).normalize(), lerp(camTween.fromD, camTween.toD, k));
+    if (k >= 1) camTween = null;
+    active = true;
+  }
+  const moved = controls.update();
+  if (active || dirty || moved) {
+    updateParts();
+    renderer.render(scene, camera);
+    updateLabels();
+    dirty = false;
+  }
+}
+$('status').remove();
+requestAnimationFrame(frame);
+function renderOnce(fluxSteps = 0) {
+  const v = V();
+  if (tweenE) { v.E = tweenE.to; tweenE = null; syncExplode(); }
+  if (camTween) { controls.target.copy(camTween.toT); camera.position.copy(camTween.toT).addScaledVector(camTween.d1.clone().normalize(), camTween.toD); camTween = null; }
+  for (const p of v.removable) p.out = p.removed ? 1 : 0;
+  const showFlux = state.flux && v.E < 0.02;
+  for (const c of v.flux.clouds) c.pts.visible = showFlux;
+  if (showFlux) for (let i = 0; i < fluxSteps; i++) v.flux.step(0.05);
+  if (v.flux.counters) v.flux.counters();
+  controls.update(); updateParts(); renderer.render(scene, camera); updateLabels();
+}
+window.__pt = { VIEWS, state, switchView, select, setToggle, setRemoved, fitView, renderOnce, info: () => renderer.info.render, freeze: f => { frozen = f; last = performance.now(); }, explode: e => { V().E = e; syncExplode(); dirty = true; }, camera, controls };
+</script>
+<script>
+  setTimeout(() => { const s = document.getElementById('status'); if (s) s.textContent = 'The 3D library could not be loaded. Check your connection and reload the page.'; }, 15000);
+</script>
+</body>
+</html>
